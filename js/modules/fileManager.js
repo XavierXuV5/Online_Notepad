@@ -272,6 +272,10 @@ function initDragAndDropOverlay() {
       const filesTab = document.querySelector('.sidebar-tab[data-tab="files"]');
       if (filesTab) filesTab.click();
       uploadFiles(e.dataTransfer.files);
+    }
+  });
+}
+
 export function showServerDashboard() {
   const dash = document.getElementById('server-dashboard');
   const editorContainer = document.getElementById('editor-container');

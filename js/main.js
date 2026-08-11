@@ -195,6 +195,14 @@ function initAppShell() {
   if (changePwCancel && changePwModal) {
     changePwCancel.addEventListener('click', () => changePwModal.classList.add('hidden'));
   }
+  const changePwForm = document.getElementById('change-pw-form');
+  if (changePwForm) {
+    changePwForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (changePwConfirm) changePwConfirm.click();
+    });
+  }
+
   if (changePwConfirm) {
     changePwConfirm.addEventListener('click', async () => {
       const cur = currentPw ? currentPw.value : '';

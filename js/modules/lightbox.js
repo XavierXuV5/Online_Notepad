@@ -204,14 +204,22 @@ async function loadLocalLibarchivePreview(file) {
 
     const archive = await Archive.open(file);
 
-    if (archive.hasEncryptedData()) {
-      const pass = prompt('🔒 暗号化された 7z アーカイブです。パスワードを入力してください:');
-      if (pass) {
-        await archive.usePassword(pass);
+    let rawFiles;
+    try {
+      rawFiles = await archive.getFilesArray();
+    } catch (extractErr) {
+      if (archive.hasEncryptedData() || /password|encrypted|crypto/i.test(extractErr.message)) {
+        const pass = prompt('🔒 暗号化された 7z アーカイブです。パスワードを入力してください:');
+        if (pass) {
+          await archive.usePassword(pass);
+          rawFiles = await archive.getFilesArray();
+        } else {
+          throw extractErr;
+        }
+      } else {
+        throw extractErr;
       }
     }
-
-    const rawFiles = await archive.getFilesArray();
     const flatEntries = rawFiles.map(item => {
       const isDir = item.file && item.file._isDir ? true : (item.file && item.file.name ? false : true);
       const fullPath = item.path + (item.file ? item.file.name : '');

@@ -299,19 +299,22 @@
   <div id="change-pw-modal" class="modal-overlay hidden">
     <div class="modal">
       <h2 class="modal-title">パスワード変更</h2>
-      <div class="modal-body">
-        <label class="modal-label">現在のパスワード</label>
-        <input type="password" id="current-pw" class="modal-input" placeholder="現在のパスワード" />
-        <label class="modal-label">新しいパスワード</label>
-        <input type="password" id="new-pw" class="modal-input" placeholder="新しいパスワード" />
-        <label class="modal-label">新しいパスワード（確認）</label>
-        <input type="password" id="confirm-pw" class="modal-input" placeholder="もう一度入力" />
-        <p id="pw-change-error" class="auth-error hidden"></p>
-      </div>
-      <div class="modal-actions">
-        <button id="change-pw-cancel" class="btn-secondary">キャンセル</button>
-        <button id="change-pw-confirm" class="btn-primary">変更する</button>
-      </div>
+      <form id="change-pw-form">
+        <input type="text" name="username" value="admin" autocomplete="username" hidden />
+        <div class="modal-body">
+          <label class="modal-label">現在のパスワード</label>
+          <input type="password" id="current-pw" class="modal-input" placeholder="現在のパスワード" autocomplete="current-password" />
+          <label class="modal-label">新しいパスワード</label>
+          <input type="password" id="new-pw" class="modal-input" placeholder="新しいパスワード" autocomplete="new-password" />
+          <label class="modal-label">新しいパスワード（確認）</label>
+          <input type="password" id="confirm-pw" class="modal-input" placeholder="もう一度入力" autocomplete="new-password" />
+          <p id="pw-change-error" class="auth-error hidden"></p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="change-pw-cancel" class="btn-secondary">キャンセル</button>
+          <button type="submit" id="change-pw-confirm" class="btn-primary">変更する</button>
+        </div>
+      </form>
     </div>
   </div>
 
