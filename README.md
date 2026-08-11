@@ -1,7 +1,9 @@
 # Online Notepad & File Manager — デプロイ・仕様書
 
+🌐 **[日本語 (Japanese)](#online-notepad--file-manager--デプロイ仕様書) | [简体中文 (Simplified Chinese)](#online-notepad--file-manager--部署与说明文档-简体中文)**
+
 パスワード保護付きの多機能オンラインメモ帳およびファイル管理システム。
-JAIST 共有 Web サーバー（Solaris 10 / Perl CGI）環境で動作します。
+JAIST 共有 Web サーバー（Solaris 10 / Perl CGI）環境および Linux / Unix 環境で動作します。
 
 ---
 
@@ -9,29 +11,49 @@ JAIST 共有 Web サーバー（Solaris 10 / Perl CGI）環境で動作します
 
 - **メモ機能（Notepad）**
   - `.txt`（プレーンテキスト）および `.md`（Markdown）対応
-  - リアルタイム Markdown プレビュー、ツールバーショートカット
-  - ノートの自動読み込み・保存・削除
+  - リアルタイム Markdown プレビュー、ツールバーショートカット、エディタショートカット（`Ctrl+B`, `Ctrl+I`, `Ctrl+K`, `Ctrl+Shift+P`）
+  - 目次アウトライン（TOC）自動生成＆スムーズスクロール
+  - オフライン下書き自動保存（`localStorage`）＆一鍵復元プロンプト
+  - ノートの自動読み込み・保存・名前変更・削除
 
 - **ファイル管理（File Manager）**
   - ファイルのアップロード・削除・直リンク URL コピー
+  - リアルタイムファイル検索インプット＆種類別タブフィルター（画像 / ドキュメント / アーカイブ / 動画）
+  - 全画面ガラスモーフィズム・ドラッグ＆ドロップ（Drag & Drop Overlay）アップロード
   - ストレージ容量のビジュアル表示（使用量/空き容量/全容量/使用率バー）
 
-- **マルチフォーマット全画面プレビュー**
+- **マルチフォーマット全画面プレビュー (Lightbox)**
   - **画像**: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.bmp`, `.ico`
   - **動画**: `.mp4`, `.webm`, `.ogg`, `.mov`（インライン再生）
   - **PDF**: 内蔵 PDF リーダー表示
   - **Office ドキュメント**: `.ppt`, `.pptx`, `.doc`, `.docx`, `.xls`, `.xlsx`（Microsoft Office Online 連携）
-  - **アーカイブ**: `.zip`, `.7z`, `.rar`, `.tar`, `.gz`, `.epub`, `.jar`（ディレクトリ構造解析・解凍前サイズ表示・内蔵 PDF/画像/テキストのプレビュー対応）
+  - **アーカイブ**: `.zip`, `.7z`, `.rar`, `.tar`, `.gz`, `.epub`, `.jar`（Windows エクスプローラー風ディレクトリツリー解析、文字化け自動修復 `fixEncoding`、暗号化 7z パスワード対応、内蔵 PDF/画像/テキストの無損プレビュー対応）
 
 - **サーバーシステム情報ダッシュボード（Server Info）**
   - CPU 構成（コア数・平均ロード・アーキテクチャ）
   - 全物理メモリ / 空きメモリ (RAM)
   - アクティブプロセス数、OS & カーネル、ホスト名、Uptime、Perl バージョン
 
-- **セキュリティ**
+- **セキュリティ & 互換性**
   - ソルト付きハッシュ保護
   - サーバーサイド セッション管理（HttpOnly + SameSite=Strict）
   - パストラバーサル攻撃対策
+  - POSIX 互換 Shebang (`#!/usr/bin/env perl`) & `.gitattributes` による LF 改行保持
+
+---
+
+## 🕒 最近の更新・修正履歴 (Change Log)
+
+- **前端 ES Modules 構造への全面リファクタリング**
+  - 従来の単一 `app.js` (1500+行) を `js/main.js` および `js/modules/` (API, Theme, Notepad, FileManager, TreeExplorer, Lightbox) に分割モジュール化。
+- **WebAssembly オンデマンド遅延読み込み (Lazy Loading)**
+  - `libarchive.wasm` モジュールを初回 `.7z` プレビュー時のみ動的 `import()` するよう改善。首屏ロード時間を大幅短縮。
+- **Windows エクスプローラー風ツリー表示 & 文字化け自動修復 (`fixEncoding`)**
+  - アーカイブプレビューを多層折りたたみツリー構造に刷新。Windows 環境で圧縮された GBK / CP1252 エンコードの日本語・中国語文字化けを自動判定して正常復元。
+- **UI/UX 強化**
+  - 全画面ドラッグ＆ドロップ、リアルタイム検索＆カテゴリフィルター、Markdown 目次 (TOC) を追加。UI テキストを完全標準日本語化。
+- **Perl CGI Linux / Unix 互換性修正**
+  - 脚本の改行コードを CRLF から Unix LF に固定。Shebang を `#!/usr/bin/env perl` に統一。
 
 ---
 
@@ -39,21 +61,28 @@ JAIST 共有 Web サーバー（Solaris 10 / Perl CGI）環境で動作します
 
 ```
 Online_Notepad/
-├── index.html          ← メインページ
-├── style.css           ← スタイルシート
-├── app.js              ← フロントエンド制御 JS
+├── index.html          ← メイン HTML ページ
+├── style.css           ← モダンデザイン CSS スタイルシート
+├── js/                 ← フロントエンド ES Modules ディレクトリ
+│   ├── main.js         ← メインエントリーポイント
+│   └── modules/
+│       ├── api.js          ← API 通信 & ユーティリティ (AbortController 超時制御)
+│       ├── theme.js        ← テーマ切り替え制御 (Light / Dark / Sumeru)
+│       ├── notepad.js      ← メモ CRUD & Markdown エディタ & 下書き自動保存 & TOC 目次
+│       ├── fileManager.js  ← ファイル管理 & リアルタイム検索/タグフィルター & ドラッグオーバーレイ
+│       ├── treeExplorer.js ← Windows 風アーカイブツリー構造 & WebAssembly 遅延読み込み
+│       └── lightbox.js     ← 全画面プレビュー Modal
 ├── icon.png            ← サイトアイコン
+├── Xumi.webp / nahida.webp ← カスタムテーマ背景
 ├── setup.pl            ← セットアップスクリプト
-├── libarchive/         ← .7z アーカイブ解凍用 JS/WASM モジュール
+├── libarchive/         ← .7z アーカイブ解凍用 JS/WASM モジュール (WebAssembly Lazy Load)
 │   ├── main.js
 │   ├── worker-bundle.js
 │   └── libarchive.wasm
 ├── cgi-bin/
 │   ├── auth.pl         ← 認証 API (chmod 755)
 │   ├── notes.pl        ← メモ CRUD API (chmod 755)
-│   ├── upload.pl       ← ファイルアップロード & サーバー情報 API (chmod 755)
-│   ├── config.pl       ← 設定ファイル (chmod 644)
-│   └── sessions/       ← セッションファイル保存先 (chmod 700)
+│   └── upload.pl       ← ファイルアップロード & サーバー情報 API (chmod 755)
 ├── notes/              ← メモ保存ディレクトリ (chmod 755)
 └── uploads/            ← アップロードファイル保存先 (chmod 755)
 ```
@@ -85,22 +114,129 @@ perl setup.pl
 
 ```bash
 chmod 755 cgi-bin/auth.pl cgi-bin/notes.pl cgi-bin/upload.pl
-chmod 644 cgi-bin/config.pl
-chmod 700 cgi-bin/sessions/
 chmod 755 notes/ uploads/
 ```
 
 ---
 
-## 🔐 セキュリティ設定
+<br><br>
 
-- パスワードはソルト付きハッシュ值として `cgi-bin/config.pl` に安全に保管されます。
-- パスワードの変更は、ログイン後に設定画面より実施してください。
-- `setup.pl` 実行後はセキュリティ確保のため同スクリプトの削除を推奨します。
+---
+---
+
+# Online Notepad & File Manager — 部署与说明文档 (简体中文)
+
+带密码保护的多功能在线记事本与文件管理系统。
+支持运行于 JAIST 共享 Web 服务器（Solaris 10 / Perl CGI）环境以及 Linux / Unix / macOS 环境。
 
 ---
 
-## ⚠️ 注意事項
+## ✨ 主要功能
 
-- `uploads/` ディレクトリ内のファイルは直接 URL アクセスが可能です。
-- 大容量アーカイブ解凍プレビューは、ブラウザの WebAssembly またはサーバー環境に依存します。
+- **记事本功能 (Notepad)**
+  - 支持 `.txt`（纯文本）与 `.md`（Markdown）格式
+  - 实时 Markdown 渲染预览、快捷工具栏、编辑器快捷键（`Ctrl+B`, `Ctrl+I`, `Ctrl+K`, `Ctrl+Shift+P`）
+  - Markdown 目录大纲 (TOC) 自动生成与平滑滚动跳转
+  - 离线草稿自动暂存（`localStorage`）与一键恢复提示
+  - 笔记的自动加载、保存、重命名与删除
+
+- **文件管理 (File Manager)**
+  - 文件上传、删除、直链 URL 一键复制
+  - 实时文件名模糊搜索框与分类标签筛选器（图片 / 文档 / 压缩包 / 视频）
+  - 全屏毛玻璃拖拽上传覆盖层（Drag & Drop Overlay）
+  - 磁盘存储容量可视化仪表盘（已用/可用/总容量/使用率进度条）
+
+- **多格式全屏预览 (Lightbox)**
+  - **图片**: `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`, `.bmp`, `.ico`
+  - **视频**: `.mp4`, `.webm`, `.ogg`, `.mov`（内联播放）
+  - **PDF**: 内置 PDF 阅读器展示
+  - **Office 文档**: `.ppt`, `.pptx`, `.doc`, `.docx`, `.xls`, `.xlsx`（集成 Microsoft Office Online 查看器）
+  - **压缩包**: `.zip`, `.7z`, `.rar`, `.tar`, `.gz`, `.epub`, `.jar`（类 Windows 资源管理器多层级树状展开、中日文字符乱码自动修复 `fixEncoding`、加密 7z 密码解密、包内 PDF/图片/文本无损解压预览）
+
+- **服务器系统信息仪表盘 (Server Info)**
+  - CPU 配置（核心数、平均负载 Load Average、架构）
+  - 物理内存 / 可用内存 (RAM)
+  - 活跃进程数、OS & 内核版本、主机名、运行时间 Uptime、Perl 版本
+
+- **安全性与兼容性**
+  - 带 Salt 加盐的哈希保护
+  - 服务端 Session 管理（HttpOnly + SameSite=Strict）
+  - 路径穿越攻击防护
+  - POSIX 兼容 Shebang (`#!/usr/bin/env perl`) 以及 `.gitattributes` 强制 LF 换行符保护
+
+---
+
+## 🕒 最近修复与更新日志 (Change Log)
+
+- **前端架构 ES Modules 模块化重构**
+  - 将原单文件 `app.js`（1500+行）重构解耦为 `js/main.js` 及 `js/modules/`（包含 API、Theme、Notepad、FileManager、TreeExplorer、Lightbox 等六大模块）。
+- **WebAssembly 动态按需延迟加载 (Lazy Loading)**
+  - 将 `libarchive.wasm` 模块改为仅在用户首次点击 `.7z` 预览时动态 `import()` 加载，大幅提升首屏加载速度。
+- **Windows 资源管理器风格树状预览 & 乱码自动修复 (`fixEncoding`)**
+  - 压缩包预览全面升级为多层级可折叠树状结构。针对 Windows 打包的 GBK / CP1252 编码文件，增加智能 `TextDecoder` 中日文乱码自动修复。
+- **UI/UX 交互增强**
+  - 新增全屏拖拽上传 overlay、文件实时搜索与分类 Tab 筛选、Markdown 目录大纲 (TOC)。界面文本全面完成标准日本语化。
+- **Perl CGI 跨平台兼容性修复**
+  - 脚本换行符由 CRLF 统一修正为 Unix LF，Shebang 统一为 `#!/usr/bin/env perl`，并通过 `.gitattributes` 锁定。
+
+---
+
+## 📁 文件结构
+
+```
+Online_Notepad/
+├── index.html          ← 主 HTML 页面
+├── style.css           ← 现代 CSS 样式表
+├── js/                 ← 前端 ES Modules 目录
+│   ├── main.js         ← 主入口文件
+│   └── modules/
+│       ├── api.js          ← API 通信与工具函数 (AbortController 超时控制)
+│       ├── theme.js        ← 主题切换管理 (Light / Dark / Sumeru)
+│       ├── notepad.js      ← 记事本 CRUD、Markdown 编辑器、离线草稿暂存与 TOC 目录
+│       ├── fileManager.js  ← 文件管理、搜索/分类筛选器与拖拽上传覆盖层
+│       ├── treeExplorer.js ← Windows 风格压缩包树状视图与 WASM 按需懒加载
+│       └── lightbox.js     ← 全屏预览 Modal
+├── icon.png            ← 网站 Icon 图标
+├── Xumi.webp / nahida.webp ← 自定义主题背景图
+├── setup.pl            ← 安装初始化脚本
+├── libarchive/         ← .7z 压缩包解压用 JS/WASM 模块 (WebAssembly 动态懒加载)
+│   ├── main.js
+│   ├── worker-bundle.js
+│   └── libarchive.wasm
+├── cgi-bin/
+│   ├── auth.pl         ← 身份认证 API (chmod 755)
+│   ├── notes.pl        ← 笔记 CRUD API (chmod 755)
+│   └── upload.pl       ← 文件上传与服务器信息 API (chmod 755)
+├── notes/              ← 笔记存储目录 (chmod 755)
+└── uploads/            ← 上传文件存储目录 (chmod 755)
+```
+
+---
+
+## 🚀 部署步骤
+
+### 1. 上传文件
+
+通过 SCP 或 SFTP（WinSCP / Cyberduck 等）将 `Online_Notepad/` 目录完整上传至服务器：
+
+```bash
+# SCP 示例
+scp -r Online_Notepad/ 用户名@sshserv.jaist.ac.jp:~/public_html/
+```
+
+### 2. 首次初始化（SSH）
+
+```bash
+ssh 用户名@sshserv.jaist.ac.jp
+cd ~/public_html/Online_Notepad
+perl setup.pl
+```
+
+### 3. 权限设置
+
+请确认 CGI 脚本与存储目录的权限：
+
+```bash
+chmod 755 cgi-bin/auth.pl cgi-bin/notes.pl cgi-bin/upload.pl
+chmod 755 notes/ uploads/
+```
