@@ -22,7 +22,7 @@ export async function postToApi(url, data, timeoutMs = 10000) {
     const res = await fetch(url, {
       method: 'POST',
       body: fd,
-      credentials: 'same-origin',
+      credentials: 'include',
       signal: controller.signal
     });
 

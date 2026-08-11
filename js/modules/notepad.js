@@ -107,7 +107,14 @@ export async function loadNotes() {
       return;
     }
 
-    noteState.notes = data.notes || [];
+    noteState.notes = (data.notes || []).map(n => ({
+      filename: n.filename,
+      title: n.title || n.name || n.filename,
+      name: n.name || n.title || n.filename,
+      format: n.format || n.ext || 'txt',
+      mtime: n.mtime || 0
+    }));
+
     renderNotesList();
 
     if (noteState.notes.length > 0 && !noteState.activeNote) {

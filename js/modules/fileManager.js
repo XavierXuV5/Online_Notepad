@@ -180,7 +180,7 @@ export async function uploadFiles(filesList) {
       fd.append('action', 'upload');
       fd.append('file', file);
 
-      const res = await fetch(API_UPLOAD, { method: 'POST', body: fd, credentials: 'same-origin' });
+      const res = await fetch(API_UPLOAD, { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json();
 
       if (data.error) {
