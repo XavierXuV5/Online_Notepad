@@ -7,6 +7,7 @@ import { initTheme } from './modules/theme.js';
 import { initNotepad, loadNotes, openNote } from './modules/notepad.js';
 import { initFileManager, loadFiles } from './modules/fileManager.js';
 import { initLightbox } from './modules/lightbox.js';
+import { setLanguage, updateUI, t } from './modules/i18n.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
@@ -14,8 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
   initFileManager();
   initLightbox();
   initAppShell();
+  initLanguage();
   checkAuth();
 });
+
+function initLanguage() {
+  updateUI();
+  const langSelect = document.getElementById('lang-select');
+  if (langSelect) {
+    langSelect.addEventListener('change', () => {
+      setLanguage(langSelect.value);
+      loadNotes();
+      loadFiles();
+    });
+  }
+}
 
 async function checkAuth() {
   try {

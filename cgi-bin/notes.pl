@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/local/bin/perl
 # ============================================================
 # notes.pl — Ultra-compatible Perl 5.8 CGI for JAIST Notes CRUD
 # ============================================================

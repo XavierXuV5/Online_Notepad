@@ -3,6 +3,7 @@
    ============================================================ */
 
 import { postToApi, showToast, escapeHtml, sanitizeName, API_NOTES } from './api.js';
+import { t } from './i18n.js';
 
 let noteState = {
   notes: [],
@@ -311,17 +312,14 @@ function updateStats() {
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   const chars = text.length;
   const lines = text.split('\n').length;
-  const readMin = Math.max(1, Math.ceil(chars / 400));
 
   const wEl = document.getElementById('word-count');
   const cEl = document.getElementById('char-count');
   const lEl = document.getElementById('line-count');
-  const rEl = document.getElementById('read-time');
 
-  if (wEl) wEl.textContent = words + ' 語';
-  if (cEl) cEl.textContent = chars + ' 文字';
-  if (lEl) lEl.textContent = lines + ' 行';
-  if (rEl) rEl.textContent = '読了時間: 約 ' + (chars > 0 ? readMin : 0) + ' 分';
+  if (wEl) wEl.textContent = t('wordsCount', { words });
+  if (cEl) cEl.textContent = t('charsCount', { chars });
+  if (lEl) lEl.textContent = t('linesCount', { lines });
 }
 
 function debounceLocalDraft() {

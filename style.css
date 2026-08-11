@@ -1279,4 +1279,60 @@ html, body {
 .md-toc-h2 { padding-left: 18px; }
 .md-toc-h3 { padding-left: 28px; font-size: 11px; opacity: 0.85; }
 
+/* Language Selector */
+.lang-selector-wrap {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+  padding: 4px 8px; border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+}
+.lang-icon { width: 14px; height: 14px; color: var(--text-secondary); }
+.lang-select {
+  background: transparent; border: none; outline: none;
+  color: var(--text-primary); font-size: 12px; cursor: pointer;
+}
+.lang-select option {
+  background: var(--bg-card, #222); color: var(--text-primary, #fff);
+}
+
+/* File Actions & Folders */
+.file-sidebar-actions {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.upload-btn span { font-size: 12px; }
+.upload-folder-btn {
+  background: var(--bg-tertiary, rgba(255,255,255,0.08));
+}
+.icon-action-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius-sm, 6px);
+  background: var(--bg-tertiary, rgba(255,255,255,0.08));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  color: var(--text-primary); cursor: pointer; transition: all 0.15s ease;
+}
+.icon-action-btn:hover {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.icon-action-btn svg { width: 16px; height: 16px; }
+
+/* Breadcrumbs Navigation */
+.file-breadcrumbs {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 6px 12px; margin-bottom: 8px;
+  background: var(--bg-secondary, rgba(0,0,0,0.15));
+  border-radius: var(--radius-sm, 6px); font-size: 11px;
+}
+.crumb-item {
+  color: var(--text-secondary); cursor: pointer; transition: color 0.15s ease;
+}
+.crumb-item:hover { color: var(--accent); text-decoration: underline; }
+.crumb-item.active { color: var(--text-primary); font-weight: 600; cursor: default; }
+.crumb-item.active:hover { text-decoration: none; }
+.crumb-separator { color: var(--text-muted); opacity: 0.5; margin: 0 2px; }
+
+/* File Actions Rename */
+.file-action-btn.rename:hover {
+  color: #e6a23c; background: rgba(230, 162, 60, 0.15);
+}
+
 

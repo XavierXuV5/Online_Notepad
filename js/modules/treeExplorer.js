@@ -10,10 +10,11 @@ let wasmArchiveModule = null;
  * Lazy import and initialize WebAssembly libarchivejs module on-demand
  */
 export async function ensureLibarchiveLoaded() {
+  if (window.Archive) return window.Archive;
   if (wasmArchiveModule) return wasmArchiveModule;
 
   try {
-    const mod = await import('../libarchive/main.js');
+    const mod = await import('../../libarchive/main.js');
     if (mod && mod.Archive) {
       mod.Archive.init({ workerUrl: 'libarchive/worker-bundle.js' });
       wasmArchiveModule = mod.Archive;

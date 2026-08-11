@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/local/bin/perl
 # ============================================================
 # upload.pl — File Upload/List/Delete CGI (Perl 5.8 Compatible)
 # ============================================================
@@ -83,37 +83,53 @@ unless ($is_auth) {
 
 if ($action eq 'upload') {
     my $file_param = $cgi->param('file');
+    my $rel_path   = $cgi->param('relative_path') || '';
     unless ($file_param) {
         print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
         print '{"error":"No file provided"}';
         exit;
     }
 
-    # Get original filename and sanitize
     my $original_name = "$file_param";
     $original_name = basename($original_name);
-    # Only remove truly dangerous filesystem characters, keep Unicode/CJK
     $original_name =~ s/[\/\\:\*\?"<>\|]/_/g;
-    # Remove leading dots (hidden files)
     $original_name =~ s/^\.+//;
     $original_name = 'upload' unless length($original_name) > 0;
 
-    # Avoid overwriting: append _1, _2, etc if file exists
+    my $target_dir = $uploads_dir;
+    if ($rel_path) {
+        $rel_path =~ s/\.\.//g;
+        $rel_path =~ s/^\/+//;
+        my $dir_part = dirname($rel_path);
+        if ($dir_part && $dir_part ne '.' && $dir_part ne '/') {
+            my @parts = split(/[\/\\]/, $dir_part);
+            my $curr = $uploads_dir;
+            for my $p (@parts) {
+                $p =~ s/[\/\\:\*\?"<>\|]/_/g;
+                $p =~ s/^\.+//;
+                next unless length($p) > 0;
+                $curr .= "/$p";
+                mkdir $curr, 0755 unless -d $curr;
+            }
+            $target_dir = $curr;
+        }
+    }
+
     my $save_name = $original_name;
-    if (-f "$uploads_dir/$save_name") {
+    if (-f "$target_dir/$save_name") {
         my ($base, $ext) = ($save_name, '');
         if ($save_name =~ /^(.+)(\.[^.]+)$/) {
             $base = $1;
             $ext  = $2;
         }
         my $counter = 1;
-        while (-f "$uploads_dir/${base}_${counter}${ext}") {
+        while (-f "$target_dir/${base}_${counter}${ext}") {
             $counter++;
         }
         $save_name = "${base}_${counter}${ext}";
     }
 
-    my $save_path = "$uploads_dir/$save_name";
+    my $save_path = "$target_dir/$save_name";
     my $fh_upload = $cgi->upload('file');
 
     if ($fh_upload) {
@@ -132,13 +148,11 @@ if ($action eq 'upload') {
         chmod 0644, $save_path;
 
         my @stat = stat($save_path);
-        my $size = $stat[7];
-        $size = 0 unless defined $size;
+        my $size = $stat[7] || 0;
 
         print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
         print sprintf('{"success":1,"name":"%s","size":%d}', json_escape($save_name), $size);
     } else {
-        # Fallback: try reading from param as filehandle
         my $fh_in = $cgi->param('file');
         if (ref($fh_in) || $fh_in) {
             open(my $fw, '>', $save_path) or do {
@@ -155,8 +169,7 @@ if ($action eq 'upload') {
             chmod 0644, $save_path;
 
             my @stat = stat($save_path);
-            my $size = $stat[7];
-            $size = 0 unless defined $size;
+            my $size = $stat[7] || 0;
 
             print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
             print sprintf('{"success":1,"name":"%s","size":%d}', json_escape($save_name), $size);
@@ -166,14 +179,71 @@ if ($action eq 'upload') {
         }
     }
 }
+elsif ($action eq 'mkdir') {
+    my $folder_name = $cgi->param('folder_name');
+    $folder_name = '' unless defined $folder_name;
+    $folder_name =~ s/[\/\\:\*\?"<>\|]/_/g;
+    $folder_name =~ s/^\.+//;
+
+    if (length($folder_name) > 0) {
+        my $new_dir = "$uploads_dir/$folder_name";
+        if (-d $new_dir) {
+            print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+            print '{"error":"Folder already exists"}';
+        } else {
+            mkdir $new_dir, 0755;
+            print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+            print sprintf('{"success":1,"name":"%s"}', json_escape($folder_name));
+        }
+    } else {
+        print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+        print '{"error":"Invalid folder name"}';
+    }
+}
+elsif ($action eq 'rename') {
+    my $old_name = $cgi->param('old_name') || '';
+    my $new_name = $cgi->param('new_name') || '';
+
+    $old_name =~ s/\.\.//g;
+    $new_name =~ s/[\/\\:\*\?"<>\|]/_/g;
+    $new_name =~ s/^\.+//;
+
+    if (is_safe_upload($old_name) && length($new_name) > 0 && -e "$uploads_dir/$old_name") {
+        my $src = "$uploads_dir/$old_name";
+        my $dst = "$uploads_dir/$new_name";
+        if (-e $dst && $src ne $dst) {
+            print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+            print '{"error":"File or folder with new name already exists"}';
+        } elsif (rename($src, $dst)) {
+            print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+            print sprintf('{"success":1,"old_name":"%s","new_name":"%s"}', json_escape($old_name), json_escape($new_name));
+        } else {
+            print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+            print '{"error":"Rename failed"}';
+        }
+    } else {
+        print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+        print '{"error":"Invalid request"}';
+    }
+}
 elsif ($action eq 'delete') {
     my $fn = $cgi->param('filename');
     $fn = '' unless defined $fn;
 
-    if (is_safe_upload($fn) && -f "$uploads_dir/$fn") {
-        unlink "$uploads_dir/$fn";
-        print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
-        print '{"success":1}';
+    if (is_safe_upload($fn)) {
+        my $target = "$uploads_dir/$fn";
+        if (-f $target) {
+            unlink $target;
+            print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+            print '{"success":1}';
+        } elsif (-d $target) {
+            system("rm -rf \"$target\" 2>/dev/null");
+            print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+            print '{"success":1}';
+        } else {
+            print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
+            print '{"error":"File not found"}';
+        }
     } else {
         print $cgi->header(-type => 'application/json', -charset => 'UTF-8');
         print '{"error":"Delete failed"}';

@@ -1,0 +1,7 @@
+# MIME type configuration for WebAssembly and JavaScript modules
+AddType application/wasm .wasm
+AddType application/javascript .js
+AddType image/webp .webp
+
+# Security options
+Options -Indexes
