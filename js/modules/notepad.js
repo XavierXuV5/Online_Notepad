@@ -95,6 +95,18 @@ export function initNotepad() {
 export async function loadNotes() {
   try {
     const data = await postToApi(API_NOTES, { action: 'list' });
+    if (data.error) {
+      if (data.error === 'unauthorized') {
+        const overlay = document.getElementById('overlay');
+        const app = document.getElementById('app');
+        if (overlay) overlay.classList.add('active');
+        if (app) app.classList.add('hidden');
+        return;
+      }
+      showToast('メモ一覧の取得に失敗: ' + data.error);
+      return;
+    }
+
     noteState.notes = data.notes || [];
     renderNotesList();
 
@@ -102,7 +114,7 @@ export async function loadNotes() {
       openNote(noteState.notes[0]);
     }
   } catch (e) {
-    showToast('メモ一覧の取得に失敗しました');
+    // Fail silently when unauthorized or network error
   }
 }
 

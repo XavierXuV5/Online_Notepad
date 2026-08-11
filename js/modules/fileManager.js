@@ -60,6 +60,11 @@ export function initFileManager() {
 export async function loadFiles() {
   try {
     const data = await postToApi(API_UPLOAD, { action: 'list' });
+    if (data.error) {
+      if (data.error === 'unauthorized') return;
+      showToast('ファイル一覧の取得に失敗: ' + data.error);
+      return;
+    }
     fileState.files = data.files || [];
     renderFilesList();
     if (data.server) {
