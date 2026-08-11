@@ -13,9 +13,13 @@ export async function ensureLibarchiveLoaded() {
   if (wasmArchiveModule) return wasmArchiveModule;
 
   try {
-    const mod = await import('../libarchive/main.js');
+    const basePath = location.pathname.replace(/\/[^/]*$/, '/');
+    const wasmMainUrl = new URL('libarchive/main.js', location.origin + basePath).href;
+    const workerUrl = new URL('libarchive/worker-bundle.js', location.origin + basePath).href;
+
+    const mod = await import(wasmMainUrl);
     if (mod && mod.Archive) {
-      mod.Archive.init({ workerUrl: 'libarchive/worker-bundle.js' });
+      mod.Archive.init({ workerUrl: workerUrl });
       wasmArchiveModule = mod.Archive;
       return wasmArchiveModule;
     }

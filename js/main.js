@@ -5,7 +5,7 @@
 import { postToApi, showToast, sanitizeName, API_AUTH, API_NOTES } from './modules/api.js';
 import { initTheme } from './modules/theme.js';
 import { initNotepad, loadNotes, openNote } from './modules/notepad.js';
-import { initFileManager, loadFiles } from './modules/fileManager.js';
+import { initFileManager, loadFiles, showServerDashboard, hideServerDashboard } from './modules/fileManager.js';
 import { initLightbox } from './modules/lightbox.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -84,6 +84,12 @@ function initAppShell() {
 
       if (panelNotes) panelNotes.classList.toggle('active', targetTab === 'notes');
       if (panelFiles) panelFiles.classList.toggle('active', targetTab === 'files');
+
+      if (targetTab === 'files') {
+        showServerDashboard();
+      } else {
+        hideServerDashboard();
+      }
     });
   });
 

@@ -3,6 +3,7 @@
    ============================================================ */
 
 import { postToApi, showToast, escapeHtml, sanitizeName, API_NOTES } from './api.js';
+import { hideServerDashboard } from './fileManager.js';
 
 let noteState = {
   notes: [],
@@ -152,6 +153,8 @@ export function renderNotesList() {
 }
 
 export async function openNote(note) {
+  hideServerDashboard();
+
   if (noteState.activeNote && hasUnsavedChanges()) {
     await saveNote(false);
   }

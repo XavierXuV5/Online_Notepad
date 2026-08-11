@@ -272,6 +272,44 @@ function initDragAndDropOverlay() {
       const filesTab = document.querySelector('.sidebar-tab[data-tab="files"]');
       if (filesTab) filesTab.click();
       uploadFiles(e.dataTransfer.files);
-    }
-  });
+export function showServerDashboard() {
+  const dash = document.getElementById('server-dashboard');
+  const editorContainer = document.getElementById('editor-container');
+  const noteTitle = document.getElementById('note-title');
+  const mdTools = document.getElementById('md-tools');
+  const viewModeBtn = document.getElementById('view-mode-btn');
+  const saveBtn = document.getElementById('save-btn');
+  const saveIndicator = document.getElementById('save-indicator');
+  const statusBar = document.querySelector('.status-bar');
+
+  if (dash) dash.classList.remove('hidden');
+  if (editorContainer) editorContainer.classList.add('hidden');
+  if (noteTitle) {
+    noteTitle.value = 'JAIST サーバーシステム情報';
+    noteTitle.disabled = true;
+  }
+  if (mdTools) mdTools.classList.add('hidden');
+  if (viewModeBtn) viewModeBtn.classList.add('hidden');
+  if (saveBtn) saveBtn.classList.add('hidden');
+  if (saveIndicator) saveIndicator.classList.add('hidden');
+  if (statusBar) statusBar.classList.add('hidden');
+
+  loadFiles();
 }
+
+export function hideServerDashboard() {
+  const dash = document.getElementById('server-dashboard');
+  const editorContainer = document.getElementById('editor-container');
+  const noteTitle = document.getElementById('note-title');
+  const saveBtn = document.getElementById('save-btn');
+  const saveIndicator = document.getElementById('save-indicator');
+  const statusBar = document.querySelector('.status-bar');
+
+  if (dash) dash.classList.add('hidden');
+  if (editorContainer) editorContainer.classList.remove('hidden');
+  if (noteTitle) noteTitle.disabled = false;
+  if (saveBtn) saveBtn.classList.remove('hidden');
+  if (saveIndicator) saveIndicator.classList.remove('hidden');
+  if (statusBar) statusBar.classList.remove('hidden');
+}
+
