@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Online Notepad</title>
+  <meta name="description" content="パスワード保護付きのオンラインメモ帳。どのデバイスからでもアクセス可能。" />
+  <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module">
+    import { Archive } from './libarchive/main.js';
+    window.Archive = Archive;
+    Archive.init({ workerUrl: 'libarchive/worker-bundle.js' });
+  </script>
+</head>
+<body>
+
+  <!-- ロック画面 -->
+  <div id="overlay" class="overlay active">
+    <div class="lock-card" id="lock-card">
+      <div class="lock-icon">
+        <img src="icon.png" alt="Notepad Icon" class="lock-icon-img" />
+      </div>
+      <h1 class="lock-title">Online Notepad</h1>
+      <p class="lock-subtitle">パスワードを入力してください</p>
+      <form id="password-form" autocomplete="off">
+        <div class="input-group">
+          <input type="password" id="password-input" class="password-input" placeholder="パスワード" autofocus autocomplete="current-password" />
+          <button type="submit" id="unlock-btn" class="unlock-btn">
+            <span class="btn-text">開く</span>
+            <svg class="btn-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+        <p id="auth-error" class="auth-error hidden">パスワードが違います。もう一度お試しください。</p>
+      </form>
+      <div class="lock-footer">MD5 暗号化ハッシュで保護</div>
+    </div>
+  </div>
+
+  <!-- メインアプリ -->
+  <div id="app" class="app hidden">
+
+    <!-- サイドバー -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <img src="icon.png" alt="" class="brand-icon" />
+          <span>Notepad</span>
+        </div>
+        <button id="sidebar-toggle" class="icon-btn" title="サイドバーを閉じる">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        </button>
+      </div>
+
+      <!-- サイドバー タブ切り替え -->
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="notes">メモ</button>
+        <button class="sidebar-tab" data-tab="files">ファイル</button>
+      </div>
+
+      <!-- メモタブ -->
+      <div class="sidebar-panel active" id="panel-notes">
+        <div class="sidebar-actions">
+          <button id="new-note-btn" class="new-note-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            新しいメモ
+          </button>
+        </div>
+        <div class="notes-list" id="notes-list"></div>
+      </div>
+
+      <!-- ファイルタブ -->
+      <div class="sidebar-panel" id="panel-files">
+        <div class="sidebar-actions">
+          <label class="upload-btn" id="upload-btn-label">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            アップロード
+            <input type="file" id="file-upload-input" multiple hidden />
+          </label>
+        </div>
+
+        <!-- ドラッグ＆ドロップゾーン -->
+        <div class="drop-zone" id="drop-zone">
+          <p>ファイルをドラッグ＆ドロップ</p>
+        </div>
+        <div class="files-list" id="files-list"></div>
+      </div>
+
+      <!-- サイドバーフッター -->
+      <div class="sidebar-footer">
+        <div class="theme-selector">
+          <button class="theme-btn active" data-theme-val="light" title="ライトテーマ">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+          <button class="theme-btn" data-theme-val="dark" title="ダークテーマ">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <button class="theme-btn" data-theme-val="sumeru" title="須弥テーマ">
+            <img src="Xumi.webp" alt="須弥" class="theme-icon-img" />
+          </button>
+        </div>
+        <button id="change-password-btn" class="sidebar-footer-btn" title="パスワード変更">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          パスワード変更
+        </button>
+        <button id="logout-btn" class="sidebar-footer-btn" title="ロック">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          ロック
+        </button>
+      </div>
+    </aside>
+
+    <!-- エディタエリア -->
+    <main class="editor-area">
+      <header class="toolbar">
+        <div class="toolbar-left">
+          <button id="mobile-sidebar-btn" class="icon-btn" title="サイドバー">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <input type="text" id="note-title" class="note-title-input" placeholder="タイトルなし" />
+        </div>
+        <div class="toolbar-right">
+          <span id="save-indicator" class="save-indicator">保存済み</span>
+
+          <!-- MD クイックツールバー（.md 時のみ表示） -->
+          <div id="md-tools" class="md-tools hidden">
+            <button class="md-tool-btn" id="md-bold" title="太字 **B**"><b>B</b></button>
+            <button class="md-tool-btn" id="md-italic" title="斜体 *I*"><i>I</i></button>
+            <button class="md-tool-btn" id="md-heading" title="見出し #">H</button>
+            <button class="md-tool-btn" id="md-list" title="リスト -">•</button>
+            <button class="md-tool-btn" id="md-quote" title="引用 >">"</button>
+            <button class="md-tool-btn" id="md-code" title="コード ```">&lt;&gt;</button>
+          </div>
+
+          <!-- 表示モード切替ボタン（.md 時のみ表示） -->
+          <button id="view-mode-btn" class="view-mode-btn hidden" title="表示モード切替">
+            <span id="view-mode-text">編集</span>
+          </button>
+
+          <button id="save-btn" class="save-btn" title="保存 (Ctrl+S)">保存</button>
+        </div>
+      </header>
+
+      <!-- エディタ + プレビュー（分割対応） -->
+      <div class="editor-container" id="editor-container" data-view="edit">
+        <textarea id="editor" class="editor" placeholder="ここにメモを入力してください…&#10;&#10;ヒント：Ctrl+S で保存。" spellcheck="false"></textarea>
+        <div class="split-divider" id="split-divider"></div>
+        <div id="preview" class="preview"></div>
+      </div>
+
+      <!-- サーバーダッシュボード（メインコンテンツエリア） -->
+      <div id="server-dashboard" class="server-dashboard hidden">
+
+        <!-- 1. 容量情報ビジュアルセクション -->
+        <div class="storage-card">
+          <div class="storage-card-header">
+            <span class="storage-title">ストレージ容量 (/home)</span>
+            <span class="storage-pct-badge" id="storage-pct-badge">--% 使用中</span>
+          </div>
+
+          <!-- プログレスバー -->
+          <div class="storage-bar-track">
+            <div class="storage-bar-fill" id="storage-bar-fill" style="width: 0%;"></div>
+          </div>
+
+          <div class="storage-details">
+            <div class="storage-detail-item">
+              <span class="storage-detail-label">総容量:</span>
+              <strong id="storage-total">--</strong>
+            </div>
+            <div class="storage-detail-item">
+              <span class="storage-detail-label">使用済み:</span>
+              <strong id="storage-used">--</strong>
+            </div>
+            <div class="storage-detail-item">
+              <span class="storage-detail-label">空き容量:</span>
+              <strong id="storage-free">--</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. システムスペック リスト -->
+        <div class="dash-list">
+          <div class="dash-row">
+            <span class="dash-key">CPU 構成</span>
+            <span class="dash-val" id="server-cpu">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">CPU 平均ロード (Load Average)</span>
+            <span class="dash-val" id="server-load">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">プロセッサ アーキテクチャ</span>
+            <span class="dash-val" id="server-arch">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">全物理メモリ (RAM)</span>
+            <span class="dash-val" id="server-ram-total">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">空きメモリ (Available RAM)</span>
+            <span class="dash-val" id="server-ram-free">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">アクティブ プロセス数</span>
+            <span class="dash-val" id="server-proc">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">OS &amp; カーネル</span>
+            <span class="dash-val" id="server-os">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">ホスト名</span>
+            <span class="dash-val" id="server-hostname">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">システム稼働時間 (Uptime)</span>
+            <span class="dash-val" id="server-uptime">--</span>
+          </div>
+          <div class="dash-row">
+            <span class="dash-key">Perl 実行環境</span>
+            <span class="dash-val" id="server-perl">--</span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="status-bar">
+        <span id="word-count">0 語</span>
+        <span id="char-count">0 文字</span>
+        <span id="line-count">1 行</span>
+        <span id="current-format" class="format-badge">TXT</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- モーダル：新規メモ作成 -->
+  <div id="new-note-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 class="modal-title">新しいメモを作成</h2>
+      <div class="modal-body">
+        <label class="modal-label">メモ名</label>
+        <input type="text" id="new-note-name" class="modal-input" placeholder="例：アイデアメモ" />
+        <label class="modal-label">フォーマット</label>
+        <div class="format-radio-group">
+          <label class="radio-label"><input type="radio" name="new-note-fmt" value="txt" checked /> .txt（プレーンテキスト）</label>
+          <label class="radio-label"><input type="radio" name="new-note-fmt" value="md" /> .md（Markdown）</label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="new-note-cancel" class="btn-secondary">キャンセル</button>
+        <button id="new-note-confirm" class="btn-primary">作成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- モーダル：メモ名変更 -->
+  <div id="rename-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 class="modal-title">メモ名を変更</h2>
+      <div class="modal-body">
+        <label class="modal-label">新しい名前</label>
+        <input type="text" id="rename-input" class="modal-input" placeholder="新しい名前" />
+      </div>
+      <div class="modal-actions">
+        <button id="rename-cancel" class="btn-secondary">キャンセル</button>
+        <button id="rename-confirm" class="btn-primary">変更</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- モーダル：パスワード変更 -->
+  <div id="change-pw-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 class="modal-title">パスワード変更</h2>
+      <div class="modal-body">
+        <label class="modal-label">現在のパスワード</label>
+        <input type="password" id="current-pw" class="modal-input" placeholder="現在のパスワード" />
+        <label class="modal-label">新しいパスワード</label>
+        <input type="password" id="new-pw" class="modal-input" placeholder="新しいパスワード" />
+        <label class="modal-label">新しいパスワード（確認）</label>
+        <input type="password" id="confirm-pw" class="modal-input" placeholder="もう一度入力" />
+        <p id="pw-change-error" class="auth-error hidden"></p>
+      </div>
+      <div class="modal-actions">
+        <button id="change-pw-cancel" class="btn-secondary">キャンセル</button>
+        <button id="change-pw-confirm" class="btn-primary">変更する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 画像プレビュー Lightbox -->
+  <div id="image-lightbox" class="lightbox hidden">
+    <div class="lightbox-backdrop"></div>
+    <button class="lightbox-close" id="lightbox-close" title="閉じる">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" title="前へ">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="lightbox-content">
+      <img id="lightbox-img" class="lightbox-img" src="" alt="" />
+      <video id="lightbox-video" class="lightbox-video hidden" controls playsinline></video>
+      <iframe id="lightbox-iframe" class="lightbox-iframe hidden" src="" frameborder="0" allowfullscreen></iframe>
+      <div id="lightbox-zip" class="lightbox-zip hidden"></div>
+      <div class="lightbox-filename" id="lightbox-filename"></div>
+    </div>
+    <button class="lightbox-nav lightbox-next" id="lightbox-next" title="次へ">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
