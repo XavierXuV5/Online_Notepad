@@ -84,10 +84,22 @@
           </label>
         </div>
 
-        <!-- ドラッグ＆ドロップゾーン -->
-        <div class="drop-zone" id="drop-zone">
-          <p>ファイルをドラッグ＆ドロップ</p>
+        <!-- 文件搜索与分类筛选栏 -->
+        <div class="file-filter-bar">
+          <div class="file-search-wrap">
+            <svg class="file-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="file-search-input" class="file-search-input" placeholder="ファイルを検索..." />
+            <button id="file-search-clear" class="file-search-clear hidden" title="検索をクリア">×</button>
+          </div>
+          <div class="file-type-tabs" id="file-type-tabs">
+            <button class="file-type-tab active" data-type="all">すべて</button>
+            <button class="file-type-tab" data-type="image" title="画像">🖼️</button>
+            <button class="file-type-tab" data-type="doc" title="ドキュメント">📄</button>
+            <button class="file-type-tab" data-type="zip" title="アーカイブ">📦</button>
+            <button class="file-type-tab" data-type="video" title="動画">🎬</button>
+          </div>
         </div>
+
         <div class="files-list" id="files-list"></div>
       </div>
 
@@ -135,6 +147,7 @@
             <button class="md-tool-btn" id="md-list" title="リスト -">•</button>
             <button class="md-tool-btn" id="md-quote" title="引用 >">"</button>
             <button class="md-tool-btn" id="md-code" title="コード ```">&lt;&gt;</button>
+            <button class="md-tool-btn" id="md-toc-toggle" title="目次 (TOC)">📑</button>
           </div>
 
           <!-- 表示モード切替ボタン（.md 時のみ表示） -->
@@ -151,6 +164,14 @@
         <textarea id="editor" class="editor" placeholder="ここにメモを入力してください…&#10;&#10;ヒント：Ctrl+S で保存。" spellcheck="false"></textarea>
         <div class="split-divider" id="split-divider"></div>
         <div id="preview" class="preview"></div>
+        <!-- TOC 目次浮層 -->
+        <div id="md-toc-sidebar" class="md-toc-sidebar hidden">
+          <div class="md-toc-header">
+            <span class="md-toc-title">📑 目次アウトライン</span>
+            <button id="md-toc-close" class="md-toc-close-btn" title="目次を閉じる">×</button>
+          </div>
+          <div id="md-toc-list" class="md-toc-list"></div>
+        </div>
       </div>
 
       <!-- サーバーダッシュボード（メインコンテンツエリア） -->
@@ -316,6 +337,17 @@
 
   <div id="toast" class="toast hidden"></div>
   <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+  <!-- 全画面ドラッグ＆ドロップファイルアップロードオーバーレイ -->
+  <div id="drag-overlay" class="drag-overlay hidden">
+    <div class="drag-overlay-card">
+      <div class="drag-overlay-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <h2>ドロップしてアップロード</h2>
+      <p>複数のファイルを一括でアップロードできます</p>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

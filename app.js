@@ -16,6 +16,9 @@ const state = {
   viewMode: 'edit',     // 'edit' | 'split' | 'preview'
   renameTarget: null,
   files: [],
+  fileSearchQuery: '',
+  fileTypeFilter: 'all',
+  isTocOpen: false,
 };
 
 // ---- DOM Cache ----
@@ -80,6 +83,17 @@ const dom = {
   logoutBtn:       document.getElementById('logout-btn'),
   // Toast
   toast:           document.getElementById('toast'),
+  // Fullscreen Drag Overlay
+  dragOverlay:     document.getElementById('drag-overlay'),
+  // File Search & Filter
+  fileSearchInput: document.getElementById('file-search-input'),
+  fileSearchClear: document.getElementById('file-search-clear'),
+  fileTypeTabs:    document.getElementById('file-type-tabs'),
+  // Markdown TOC
+  mdTocToggle:     document.getElementById('md-toc-toggle'),
+  mdTocSidebar:    document.getElementById('md-toc-sidebar'),
+  mdTocClose:      document.getElementById('md-toc-close'),
+  mdTocList:       document.getElementById('md-toc-list'),
   // Lightbox
   lightbox:        document.getElementById('image-lightbox'),
   lightboxImg:     document.getElementById('lightbox-img'),
@@ -340,6 +354,10 @@ function renderMarkdown(rawText) {
     html = html.replace(/`(.+?)`/g, '<code>$1</code>');
     html = html.replace(/\n/g, '<br>');
     dom.preview.innerHTML = html;
+  }
+
+  if (state.isTocOpen) {
+    updateTocOutline();
   }
 }
 
@@ -822,7 +840,30 @@ function renderFilesList() {
     return;
   }
 
-  state.files.forEach(function(f) {
+  var query = (state.fileSearchQuery || '').toLowerCase().trim();
+  var typeFilter = state.fileTypeFilter || 'all';
+
+  var filteredFiles = state.files.filter(function(f) {
+    var displayName = fixEncoding(f.name);
+    if (query && !displayName.toLowerCase().includes(query)) {
+      return false;
+    }
+    if (typeFilter !== 'all') {
+      var pType = getFilePreviewType(displayName);
+      if (typeFilter === 'image' && pType !== 'image') return false;
+      if (typeFilter === 'doc' && pType !== 'pdf' && pType !== 'office') return false;
+      if (typeFilter === 'zip' && pType !== 'zip') return false;
+      if (typeFilter === 'video' && pType !== 'video') return false;
+    }
+    return true;
+  });
+
+  if (filteredFiles.length === 0) {
+    dom.filesList.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:24px;font-size:12px">一致するファイルが見つかりません</p>';
+    return;
+  }
+
+  filteredFiles.forEach(function(f) {
     var item = document.createElement('div');
     item.className = 'file-item';
 
@@ -1440,6 +1481,129 @@ document.addEventListener('keydown', function(e) {
   else if (e.key === 'ArrowLeft') { lightboxPrev(); }
   else if (e.key === 'ArrowRight') { lightboxNext(); }
 });
+
+// ============================================================
+//  1. FULLSCREEN DRAG & DROP OVERLAY
+// ============================================================
+var dragCounter = 0;
+
+window.addEventListener('dragenter', function(e) {
+  e.preventDefault();
+  dragCounter++;
+  if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+    if (dom.dragOverlay) dom.dragOverlay.classList.remove('hidden');
+  }
+});
+
+window.addEventListener('dragover', function(e) {
+  e.preventDefault();
+});
+
+window.addEventListener('dragleave', function(e) {
+  e.preventDefault();
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    if (dom.dragOverlay) dom.dragOverlay.classList.add('hidden');
+  }
+});
+
+window.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dragCounter = 0;
+  if (dom.dragOverlay) dom.dragOverlay.classList.add('hidden');
+
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    const filesTab = document.querySelector('.sidebar-tab[data-tab="files"]');
+    if (filesTab) filesTab.click();
+    uploadFiles(e.dataTransfer.files);
+  }
+});
+
+// ============================================================
+//  2. FILE SEARCH & TYPE FILTER LISTENERS
+// ============================================================
+if (dom.fileSearchInput) {
+  dom.fileSearchInput.addEventListener('input', function() {
+    state.fileSearchQuery = dom.fileSearchInput.value;
+    if (dom.fileSearchClear) dom.fileSearchClear.classList.toggle('hidden', !state.fileSearchQuery);
+    renderFilesList();
+  });
+}
+
+if (dom.fileSearchClear) {
+  dom.fileSearchClear.addEventListener('click', function() {
+    dom.fileSearchInput.value = '';
+    state.fileSearchQuery = '';
+    dom.fileSearchClear.classList.add('hidden');
+    renderFilesList();
+  });
+}
+
+if (dom.fileTypeTabs) {
+  dom.fileTypeTabs.querySelectorAll('.file-type-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      dom.fileTypeTabs.querySelectorAll('.file-type-tab').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      state.fileTypeFilter = btn.getAttribute('data-type');
+      renderFilesList();
+    });
+  });
+}
+
+// ============================================================
+//  3. MARKDOWN TOC OUTLINE GENERATOR
+// ============================================================
+function updateTocOutline() {
+  if (!dom.preview || !dom.mdTocList) return;
+
+  var headings = dom.preview.querySelectorAll('h1, h2, h3');
+  if (headings.length === 0) {
+    dom.mdTocList.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:12px;text-align:center">見出しがありません</div>';
+    return;
+  }
+
+  var html = '';
+  headings.forEach(function(h, idx) {
+    var id = h.id || ('toc-heading-' + idx);
+    h.id = id;
+    var level = h.tagName.toLowerCase();
+    var text = h.textContent.trim();
+
+    html += '<div class="md-toc-item md-toc-' + level + '" data-target-id="' + id + '" title="' + escapeHtml(text) + '">' + escapeHtml(text) + '</div>';
+  });
+
+  dom.mdTocList.innerHTML = html;
+
+  dom.mdTocList.querySelectorAll('.md-toc-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      var targetId = item.getAttribute('data-target-id');
+      var targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        dom.mdTocList.querySelectorAll('.md-toc-item').forEach(function(i) { i.classList.remove('active'); });
+        item.classList.add('active');
+      }
+    });
+  });
+}
+
+if (dom.mdTocToggle) {
+  dom.mdTocToggle.addEventListener('click', function() {
+    state.isTocOpen = !state.isTocOpen;
+    dom.mdTocSidebar.classList.toggle('hidden', !state.isTocOpen);
+    if (state.isTocOpen) {
+      updateTocOutline();
+    }
+  });
+}
+
+if (dom.mdTocClose) {
+  dom.mdTocClose.addEventListener('click', function() {
+    state.isTocOpen = false;
+    dom.mdTocSidebar.classList.add('hidden');
+  });
+}
 
 // ============================================================
 //  THEME MANAGEMENT
