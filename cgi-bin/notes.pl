@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/env perl
 # ============================================================
 # notes.pl — Ultra-compatible Perl 5.8 CGI for JAIST Notes CRUD
 # ============================================================
@@ -12,7 +12,8 @@ my $COOKIE_NAME  = 'notepad_auth';
 my $SECRET_TOKEN = 'notepad_secret_token_2023';
 
 my $script_dir = dirname(__FILE__);
-my $notes_dir  = "$script_dir/../Online_Notepad/notes";
+my $notes_dir  = -d "$script_dir/../notes" ? "$script_dir/../notes" 
+               : (-d "$script_dir/../Online_Notepad/notes" ? "$script_dir/../Online_Notepad/notes" : "$script_dir/../notes");
 
 unless (-d $notes_dir) {
     mkdir $notes_dir, 0777;

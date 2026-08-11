@@ -29,10 +29,20 @@ export async function postToApi(url, data, timeoutMs = 10000) {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      throw new Error(`HTTP Error ${res.status}`);
+      throw new Error(`HTTPエラー ${res.status}`);
     }
 
-    return await res.json();
+    const text = await res.text();
+    if (!text || !text.trim()) {
+      throw new Error('CGIスクリプトから空の応答が返されました');
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (parseErr) {
+      console.error('API Response Parsing Failed:', text);
+      throw new Error('サーバー応答のJSON解析に失敗しました');
+    }
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {

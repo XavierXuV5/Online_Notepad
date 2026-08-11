@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/env perl
 # ============================================================
 # upload.pl — File Upload/List/Delete CGI (Perl 5.8 Compatible)
 # ============================================================
@@ -16,7 +16,8 @@ my $COOKIE_NAME  = 'notepad_auth';
 my $SECRET_TOKEN = 'notepad_secret_token_2023';
 
 my $script_dir  = dirname(__FILE__);
-my $uploads_dir = "$script_dir/../Online_Notepad/uploads";
+my $uploads_dir = -d "$script_dir/../uploads" ? "$script_dir/../uploads" 
+                : (-d "$script_dir/../Online_Notepad/uploads" ? "$script_dir/../Online_Notepad/uploads" : "$script_dir/../uploads");
 
 unless (-d $uploads_dir) {
     mkdir $uploads_dir, 0777;
