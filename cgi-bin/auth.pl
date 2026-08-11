@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/env perl
 # ============================================================
 # auth.pl — Ultra-compatible Perl 5.8 CGI for JAIST
 # MD5 Hash Password Authentication
