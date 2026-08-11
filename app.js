@@ -93,12 +93,57 @@ const dom = {
 };
 
 // ---- Utilities ----
+const cp1252Map = {
+  0x80: 0x20AC, 0x82: 0x201A, 0x83: 0x0192, 0x84: 0x201E, 0x85: 0x2026, 0x86: 0x2020, 0x87: 0x2021,
+  0x88: 0x02C6, 0x89: 0x2030, 0x8A: 0x0160, 0x8B: 0x2039, 0x8C: 0x0152, 0x8E: 0x017D, 0x91: 0x2018,
+  0x92: 0x2019, 0x93: 0x201C, 0x94: 0x201D, 0x95: 0x2022, 0x96: 0x2013, 0x97: 0x2014, 0x98: 0x02DC,
+  0x99: 0x2122, 0x9A: 0x0161, 0x9B: 0x203A, 0x9C: 0x0153, 0x9E: 0x017E, 0x9F: 0x0178
+};
+const unicodeToByteMap = {};
+for (let b = 0; b < 256; b++) unicodeToByteMap[b] = b;
+Object.keys(cp1252Map).forEach(function(b) { unicodeToByteMap[cp1252Map[b]] = parseInt(b, 10); });
+
+function fixEncoding(str) {
+  if (!str) return str;
+  if (/[\u4e00-\u9fa5\u3040-\u30ff]/.test(str)) return str;
+
+  try {
+    const bytes = new Uint8Array(str.length);
+    let valid = true;
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (unicodeToByteMap[code] !== undefined) {
+        bytes[i] = unicodeToByteMap[code];
+      } else if (code <= 255) {
+        bytes[i] = code;
+      } else {
+        valid = false;
+        break;
+      }
+    }
+
+    if (valid) {
+      try {
+        const decodedUtf8 = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        if (/[\u4e00-\u9fa5\u3040-\u30ff]/.test(decodedUtf8)) return decodedUtf8;
+      } catch (e) {}
+
+      try {
+        const decodedGbk = new TextDecoder('gbk').decode(bytes);
+        if (/[\u4e00-\u9fa5]/.test(decodedGbk)) return decodedGbk;
+      } catch (e) {}
+    }
+  } catch (e) {}
+
+  return str;
+}
+
 function getFilePreviewType(filename) {
   if (/\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$/i.test(filename)) return 'image';
   if (/\.(mp4|webm|ogg|mov)$/i.test(filename)) return 'video';
   if (/\.(pdf)$/i.test(filename)) return 'pdf';
   if (/\.(ppt|pptx|doc|docx|xls|xlsx)$/i.test(filename)) return 'office';
-  if (/\.(zip|jar|epub)$/i.test(filename)) return 'zip';
+  if (/\.(zip|jar|epub|7z|rar|tar|gz|bz2|xz)$/i.test(filename)) return 'zip';
   return null;
 }
 
@@ -781,20 +826,21 @@ function renderFilesList() {
     var item = document.createElement('div');
     item.className = 'file-item';
 
-    var previewType = getFilePreviewType(f.name);
+    var displayName = fixEncoding(f.name);
+    var previewType = getFilePreviewType(displayName);
     var canPreview = !!previewType;
     var thumbHtml;
 
     if (previewType === 'image') {
       thumbHtml = '<div class="file-thumb file-thumb-preview"><img src="uploads/' + encodeURIComponent(f.name) + '" alt="" loading="lazy" /></div>';
     } else {
-      var ext = f.name.split('.').pop().toUpperCase().substring(0, 4);
+      var ext = displayName.split('.').pop().toUpperCase().substring(0, 4);
       thumbHtml = '<div class="file-thumb' + (canPreview ? ' file-thumb-preview' : '') + '">' + escapeHtml(ext) + '</div>';
     }
 
     item.innerHTML = thumbHtml +
       '<div class="file-info' + (canPreview ? ' file-info-preview' : '') + '">' +
-        '<div class="file-name" title="' + escapeHtml(f.name) + '">' + escapeHtml(f.name) + '</div>' +
+        '<div class="file-name" title="' + escapeHtml(displayName) + '">' + escapeHtml(displayName) + '</div>' +
         '<div class="file-size">' + formatFileSize(f.size) + '</div>' +
       '</div>' +
       '<div class="file-actions">' +
@@ -1034,6 +1080,178 @@ function lightboxNext() {
   }
 }
 
+// ---- Windows Explorer Style Archive Tree View ----
+function getFileIcon(fileName) {
+  if (/\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$/i.test(fileName)) return '🖼️';
+  if (/\.(pdf)$/i.test(fileName)) return '📕';
+  if (/\.(ppt|pptx|doc|docx|xls|xlsx)$/i.test(fileName)) return '📊';
+  if (/\.(mp4|webm|ogg|mov)$/i.test(fileName)) return '🎬';
+  if (/\.(txt|md|json|js|css|html|xml|log|py|c|cpp|h|java|sh|pl|php|rs|go|sql|yml|yaml|ini)$/i.test(fileName)) return '📄';
+  if (/\.(zip|7z|rar|tar|gz|bz2|xz|jar|epub)$/i.test(fileName)) return '📦';
+  return '📄';
+}
+
+function buildArchiveTree(flatEntries) {
+  const root = { name: 'root', isDir: true, path: '', children: {} };
+
+  flatEntries.forEach(function(entry) {
+    const fixedPath = fixEncoding(entry.path || '');
+    const cleanPath = fixedPath.replace(/^\/+/, '');
+    if (!cleanPath) return;
+
+    const parts = cleanPath.split('/').filter(Boolean);
+    let current = root;
+
+    parts.forEach(function(part, index) {
+      const isLast = (index === parts.length - 1);
+      const isDirectory = isLast ? entry.isDir : true;
+
+      if (!current.children[part]) {
+        current.children[part] = {
+          name: part,
+          isDir: isDirectory,
+          path: parts.slice(0, index + 1).join('/') + (isDirectory ? '/' : ''),
+          children: isDirectory ? {} : null,
+          size: isLast ? (entry.size || 0) : 0,
+          fileRef: isLast ? (entry.file || null) : null
+        };
+      } else if (isLast && !entry.isDir) {
+        current.children[part].fileRef = entry.file;
+        current.children[part].size = entry.size || 0;
+        current.children[part].isDir = false;
+      }
+
+      current = current.children[part];
+    });
+  });
+
+  return root;
+}
+
+function renderArchiveTreeHtml(node) {
+  if (!node.children) return '';
+
+  const childKeys = Object.keys(node.children);
+
+  // Sort directories first, then files alphabetically
+  childKeys.sort(function(a, b) {
+    const itemA = node.children[a];
+    const itemB = node.children[b];
+    if (itemA.isDir !== itemB.isDir) return itemA.isDir ? -1 : 1;
+    return itemA.name.localeCompare(itemB.name);
+  });
+
+  let html = '';
+  childKeys.forEach(function(key) {
+    const child = node.children[key];
+    if (child.isDir) {
+      const hasChildren = child.children && Object.keys(child.children).length > 0;
+      html += '<div class="tree-folder" data-path="' + escapeHtml(child.path) + '">';
+      html += '<div class="tree-row tree-folder-row">';
+      html += '<span class="tree-toggle">▼</span>';
+      html += '<span class="tree-icon tree-folder-icon"></span>';
+      html += '<span class="tree-name">' + escapeHtml(child.name) + '</span>';
+      html += '</div>';
+      if (hasChildren) {
+        html += '<div class="tree-children">' + renderArchiveTreeHtml(child) + '</div>';
+      }
+      html += '</div>';
+    } else {
+      const isPreviewable = /\.(png|jpg|jpeg|gif|webp|svg|pdf|txt|md|json|js|css|html|xml|log|py|c|cpp|h|java|sh|pl|php|rs|go|sql|yml|yaml|ini)$/i.test(child.name);
+      html += '<div class="tree-file" data-path="' + escapeHtml(child.path) + '">';
+      html += '<div class="tree-row tree-file-row">';
+      html += '<span class="tree-toggle" style="opacity:0">•</span>';
+      html += '<span class="tree-icon">' + getFileIcon(child.name) + '</span>';
+      html += '<span class="tree-name">' + escapeHtml(child.name) + '</span>';
+      html += '<span class="tree-size">' + (child.size ? formatFileSize(child.size) : '-') + '</span>';
+      if (isPreviewable) {
+        html += '<span class="zip-entry-link" data-path="' + escapeHtml(child.path) + '">プレビュー</span>';
+      }
+      html += '</div>';
+      html += '</div>';
+    }
+  });
+
+  return html;
+}
+
+function attachTreeExplorerEvents(containerEl, fileNodeMap, extractHandler) {
+  // Folder expand/collapse toggling
+  containerEl.querySelectorAll('.tree-folder-row').forEach(function(row) {
+    row.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      const folderEl = row.closest('.tree-folder');
+      if (folderEl) {
+        folderEl.classList.toggle('collapsed');
+      }
+    });
+  });
+
+  // Preview link click handler
+  containerEl.querySelectorAll('.zip-entry-link').forEach(function(btn) {
+    btn.addEventListener('click', async function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const targetPath = btn.getAttribute('data-path');
+      const itemNode = fileNodeMap[targetPath];
+      if (!itemNode) return;
+
+      const box = document.getElementById('zip-preview-box');
+      if (!box) return;
+
+      box.classList.remove('hidden');
+      box.innerHTML = '<div style="color:rgba(255,255,255,0.5)">「' + escapeHtml(targetPath) + '」解凍中…</div>';
+
+      try {
+        await extractHandler(itemNode, box);
+      } catch (err) {
+        box.innerHTML = '<div style="color:var(--danger)">解凍エラー: ' + escapeHtml(err.message) + '</div>';
+      }
+    });
+  });
+}
+
+function renderTreeExplorer(archiveName, flatEntries, extractHandler, badgeText) {
+  const rootNode = buildArchiveTree(flatEntries);
+  const fileNodeMap = {};
+
+  function mapNodes(node) {
+    if (!node.children) return;
+    Object.keys(node.children).forEach(function(k) {
+      const child = node.children[k];
+      fileNodeMap[child.path] = child;
+      if (child.isDir) mapNodes(child);
+    });
+  }
+  mapNodes(rootNode);
+
+  let totalSize = 0;
+  let fileCount = 0;
+  flatEntries.forEach(function(e) {
+    if (!e.isDir) {
+      totalSize += (e.size || 0);
+      fileCount++;
+    }
+  });
+
+  let html = '<div class="zip-header">';
+  html += '<span class="zip-title">📦 ' + escapeHtml(archiveName) + (badgeText ? ' <small style="font-size:11px;color:var(--primary)">' + escapeHtml(badgeText) + '</small>' : '') + '</span>';
+  html += '<span class="zip-meta">' + fileCount + ' 個のファイル (' + formatFileSize(totalSize) + ')</span>';
+  html += '</div>';
+
+  html += '<div class="tree-explorer-container">';
+  html += '<div class="tree-view-root">';
+  html += renderArchiveTreeHtml(rootNode);
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div id="zip-preview-box" class="hidden"></div>';
+
+  dom.lightboxZip.innerHTML = html;
+
+  attachTreeExplorerEvents(dom.lightboxZip, fileNodeMap, extractHandler);
+}
+
 async function loadZipPreview(fileUrl, zipName) {
   dom.lightboxZip.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6)">アーカイブ解析中…</div>';
 
@@ -1047,98 +1265,60 @@ async function loadZipPreview(fileUrl, zipName) {
       const arrayBuffer = await response.arrayBuffer();
       const zip = await JSZip.loadAsync(arrayBuffer);
 
-      const entries = [];
+      const flatEntries = [];
       zip.forEach(function(relativePath, zipEntry) {
-        entries.push(zipEntry);
+        flatEntries.push({
+          path: relativePath,
+          isDir: zipEntry.dir,
+          size: zipEntry._data ? (zipEntry._data.uncompressedSize || 0) : 0,
+          file: zipEntry
+        });
       });
 
-      if (entries.length === 0) {
+      if (flatEntries.length === 0) {
         dom.lightboxZip.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6)">空の ZIP アーカイブです</div>';
         return;
       }
 
-      let totalUncompressed = 0;
-      entries.forEach(function(e) {
-        if (e._data && e._data.uncompressedSize) {
-          totalUncompressed += e._data.uncompressedSize;
+      renderTreeExplorer(zipName, flatEntries, async function(node, box) {
+        const zipEntry = node.fileRef;
+        if (!zipEntry) return;
+
+        if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(node.name)) {
+          const blob = await zipEntry.async('blob');
+          const objectUrl = URL.createObjectURL(blob);
+          box.className = 'zip-inner-preview';
+          box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">🖼️ ' + escapeHtml(node.path) + '</div><img src="' + objectUrl + '" class="zip-inner-img" />';
+        } else if (/\.(pdf)$/i.test(node.name)) {
+          const rawBlob = await zipEntry.async('blob');
+          const pdfBlob = new Blob([rawBlob], { type: 'application/pdf' });
+          const objectUrl = URL.createObjectURL(pdfBlob);
+          box.className = 'zip-inner-preview';
+          box.style.maxHeight = 'none';
+          box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(node.path) + '</div><iframe src="' + objectUrl + '" class="zip-inner-iframe"></iframe>';
+        } else {
+          const text = await zipEntry.async('string');
+          box.className = 'zip-inner-preview';
+          box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(node.path) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n... (一部のみ表示)' : '');
         }
-      });
-
-      let html = '<div class="zip-header">';
-      html += '<span class="zip-title">📦 ' + escapeHtml(zipName) + '</span>';
-      html += '<span class="zip-meta">' + entries.length + ' 個のファイル (' + formatFileSize(totalUncompressed) + ')</span>';
-      html += '</div>';
-
-      html += '<table class="zip-table"><thead><tr><th>名前</th><th style="text-align:right">サイズ</th><th></th></tr></thead><tbody>';
-
-      entries.sort(function(a, b) {
-        if (a.dir !== b.dir) return a.dir ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      });
-
-      entries.forEach(function(e, i) {
-        const sizeStr = e.dir ? '-' : formatFileSize(e._data ? (e._data.uncompressedSize || 0) : 0);
-        const isPreviewable = !e.dir && /\.(png|jpg|jpeg|gif|webp|svg|pdf|txt|md|json|js|css|html|xml|log|py|c|cpp|h|java|sh|pl)$/i.test(e.name);
-        
-        html += '<tr>';
-        html += '<td>' + (e.dir ? '📁 ' : '📄 ') + escapeHtml(e.name) + '</td>';
-        html += '<td style="text-align:right;color:rgba(255,255,255,0.5);font-size:11px">' + sizeStr + '</td>';
-        html += '<td style="text-align:right">';
-        if (isPreviewable) {
-          html += '<span class="zip-entry-link" data-entry-idx="' + i + '">プレビュー</span>';
-        }
-        html += '</td></tr>';
-      });
-
-      html += '</tbody></table>';
-      html += '<div id="zip-preview-box" class="hidden"></div>';
-
-      dom.lightboxZip.innerHTML = html;
-
-      // Attach click listeners
-      dom.lightboxZip.querySelectorAll('.zip-entry-link').forEach(function(btn) {
-        btn.addEventListener('click', async function(ev) {
-          ev.preventDefault();
-          const idx = parseInt(btn.getAttribute('data-entry-idx'), 10);
-          const entry = entries[idx];
-          if (!entry) return;
-
-          const box = document.getElementById('zip-preview-box');
-          if (!box) return;
-
-          box.classList.remove('hidden');
-          box.innerHTML = '<div style="color:rgba(255,255,255,0.5)">「' + escapeHtml(entry.name) + '」解凍中…</div>';
-
-          try {
-            if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(entry.name)) {
-              const blob = await entry.async('blob');
-              const objectUrl = URL.createObjectURL(blob);
-              box.className = 'zip-inner-preview';
-              box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">🖼️ ' + escapeHtml(entry.name) + '</div><img src="' + objectUrl + '" class="zip-inner-img" />';
-            } else if (/\.(pdf)$/i.test(entry.name)) {
-              const rawBlob = await entry.async('blob');
-              const pdfBlob = new Blob([rawBlob], { type: 'application/pdf' });
-              const objectUrl = URL.createObjectURL(pdfBlob);
-              box.className = 'zip-inner-preview';
-              box.style.maxHeight = 'none';
-              box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(entry.name) + '</div><iframe src="' + objectUrl + '" class="zip-inner-iframe"></iframe>';
-            } else {
-              const text = await entry.async('string');
-              box.className = 'zip-inner-preview';
-              box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(entry.name) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n... (一部のみ表示)' : '');
-            }
-          } catch (err) {
-            box.innerHTML = '<div style="color:var(--danger)">プレビュー解凍エラー: ' + escapeHtml(err.message) + '</div>';
-          }
-        });
       });
       return;
     } catch (err) {
-      console.warn('JSZip failed:', err);
+      console.warn('JSZip failed, trying libarchivejs:', err);
     }
   }
 
-  // 2. Try server-side archive inspection (works for .7z, .rar, .zip, .tar, .gz)
+  // 2. Try local libarchive module (WebAssembly) for .7z / .rar / .tar / .gz / .zip etc.
+  if (typeof window.Archive !== 'undefined') {
+    try {
+      await loadLocalLibarchivePreview(fileUrl, zipName);
+      return;
+    } catch (e) {
+      console.warn('Local libarchive preview failed, trying server fallback:', e);
+    }
+  }
+
+  // 3. Fallback to server-side archive inspection
   try {
     const data = await postToApi(API_UPLOAD, { action: 'archive_list', filename: zipName });
     if (data && data.entries && data.entries.length > 0) {
@@ -1149,26 +1329,30 @@ async function loadZipPreview(fileUrl, zipName) {
     // Server archive inspection failed
   }
 
-  // 3. Try local libarchive module for .7z / .rar / .tar if present
-  if (typeof window.Archive !== 'undefined' && !isZip) {
-    try {
-      await loadLocalLibarchivePreview(fileUrl, zipName);
-      return;
-    } catch (e) {
-      console.warn('Local libarchive preview failed:', e);
-    }
-  }
-
-  dom.lightboxZip.innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger)">アーカイブの解凍に失敗しました。<br><span style="font-size:11px;opacity:0.7">（.7z 解凍には WebAssembly 指向の libarchive.wasm ファイル、或者服务器端 7za 命令支持）</span></div>';
+  dom.lightboxZip.innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger)">アーカイブの解凍に失敗しました。<br><span style="font-size:11px;opacity:0.7">（.7z 解凍には WebAssembly 指向の libarchive.wasm ファイル支持）</span></div>';
 }
 
 async function loadLocalLibarchivePreview(fileUrl, archiveName) {
+  dom.lightboxZip.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6)">⚡ WebAssembly (libarchivejs) で .7z アーカイブ解凍中…</div>';
+
   const response = await fetch(fileUrl);
   if (!response.ok) throw new Error('HTTP ' + response.status);
   const blob = await response.blob();
   const fileObj = new File([blob], archiveName);
 
   const archive = await window.Archive.open(fileObj);
+
+  // Check encryption support
+  try {
+    const encrypted = await archive.hasEncryptedData();
+    if (encrypted) {
+      const pass = prompt('🔒 暗号化された 7z アーカイブです。パスワードを入力してください:');
+      if (pass) {
+        await archive.usePassword(pass);
+      }
+    }
+  } catch (e) {}
+
   const filesArray = await archive.getFilesArray();
 
   if (!filesArray || filesArray.length === 0) {
@@ -1176,149 +1360,71 @@ async function loadLocalLibarchivePreview(fileUrl, archiveName) {
     return;
   }
 
-  let totalUncompressed = 0;
-  filesArray.forEach(function(item) {
-    if (item.file && item.file.size) {
-      totalUncompressed += item.file.size;
+  const flatEntries = filesArray.map(function(item) {
+    const fullPath = (item.file && item.file._path) ? item.file._path : ((item.path || '') + (item.file ? item.file.name : ''));
+    return {
+      path: fullPath,
+      isDir: !item.file,
+      size: item.file ? (item.file.size || 0) : 0,
+      file: item.file
+    };
+  });
+
+  renderTreeExplorer(archiveName, flatEntries, async function(node, box) {
+    const compressedFile = node.fileRef;
+    if (!compressedFile) return;
+
+    const extracted = await compressedFile.extract();
+
+    if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(node.name)) {
+      const objectUrl = URL.createObjectURL(extracted);
+      box.className = 'zip-inner-preview';
+      box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">🖼️ ' + escapeHtml(node.path) + '</div><img src="' + objectUrl + '" class="zip-inner-img" />';
+    } else if (/\.(pdf)$/i.test(node.name)) {
+      const pdfBlob = new Blob([extracted], { type: 'application/pdf' });
+      const objectUrl = URL.createObjectURL(pdfBlob);
+      box.className = 'zip-inner-preview';
+      box.style.maxHeight = 'none';
+      box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(node.path) + '</div><iframe src="' + objectUrl + '" class="zip-inner-iframe"></iframe>';
+    } else {
+      const text = await extracted.text();
+      box.className = 'zip-inner-preview';
+      box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(node.path) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n... (一部のみ表示)' : '');
     }
-  });
-
-  let html = '<div class="zip-header">';
-  html += '<span class="zip-title">📦 ' + escapeHtml(archiveName) + '</span>';
-  html += '<span class="zip-meta">' + filesArray.length + ' 個のファイル (' + formatFileSize(totalUncompressed) + ')</span>';
-  html += '</div>';
-
-  html += '<table class="zip-table"><thead><tr><th>名前</th><th style="text-align:right">サイズ</th><th></th></tr></thead><tbody>';
-
-  filesArray.forEach(function(item, i) {
-    const fileName = item.path || (item.file ? item.file.name : 'unnamed');
-    const sizeStr = item.file ? formatFileSize(item.file.size || 0) : '-';
-    const isPreviewable = /\.(png|jpg|jpeg|gif|webp|svg|pdf|txt|md|json|js|css|html|xml|log|py|c|cpp|h|java|sh|pl)$/i.test(fileName);
-
-    html += '<tr>';
-    html += '<td>📄 ' + escapeHtml(fileName) + '</td>';
-    html += '<td style="text-align:right;color:rgba(255,255,255,0.5);font-size:11px">' + sizeStr + '</td>';
-    html += '<td style="text-align:right">';
-    if (isPreviewable) {
-      html += '<span class="zip-entry-link" data-lib-idx="' + i + '">プレビュー</span>';
-    }
-    html += '</td></tr>';
-  });
-
-  html += '</tbody></table>';
-  html += '<div id="zip-preview-box" class="hidden"></div>';
-
-  dom.lightboxZip.innerHTML = html;
-
-  // Attach click handlers
-  dom.lightboxZip.querySelectorAll('.zip-entry-link').forEach(function(btn) {
-    btn.addEventListener('click', async function(ev) {
-      ev.preventDefault();
-      const idx = parseInt(btn.getAttribute('data-lib-idx'), 10);
-      const item = filesArray[idx];
-      if (!item || !item.file) return;
-
-      const box = document.getElementById('zip-preview-box');
-      if (!box) return;
-
-      box.classList.remove('hidden');
-      const fileName = item.path || item.file.name;
-      box.innerHTML = '<div style="color:rgba(255,255,255,0.5)">「' + escapeHtml(fileName) + '」解凍中…</div>';
-
-      try {
-        const extracted = await item.file.extract();
-
-        if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(fileName)) {
-          const objectUrl = URL.createObjectURL(extracted);
-          box.className = 'zip-inner-preview';
-          box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">🖼️ ' + escapeHtml(fileName) + '</div><img src="' + objectUrl + '" class="zip-inner-img" />';
-        } else if (/\.(pdf)$/i.test(fileName)) {
-          const pdfBlob = new Blob([extracted], { type: 'application/pdf' });
-          const objectUrl = URL.createObjectURL(pdfBlob);
-          box.className = 'zip-inner-preview';
-          box.style.maxHeight = 'none';
-          box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(fileName) + '</div><iframe src="' + objectUrl + '" class="zip-inner-iframe"></iframe>';
-        } else {
-          const text = await extracted.text();
-          box.className = 'zip-inner-preview';
-          box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(fileName) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n... (一部のみ表示)' : '');
-        }
-      } catch (err) {
-        box.innerHTML = '<div style="color:var(--danger)">解凍エラー: ' + escapeHtml(err.message) + '</div>';
-      }
-    });
-  });
+  }, '(WebAssembly 7z/Archive)');
 }
 
 function renderServerArchiveList(zipName, entries) {
-  let totalUncompressed = 0;
-  entries.forEach(function(e) { totalUncompressed += (e.size || 0); });
-
-  let html = '<div class="zip-header">';
-  html += '<span class="zip-title">📦 ' + escapeHtml(zipName) + '</span>';
-  html += '<span class="zip-meta">' + entries.length + ' 個のファイル (' + formatFileSize(totalUncompressed) + ')</span>';
-  html += '</div>';
-
-  html += '<table class="zip-table"><thead><tr><th>名前</th><th style="text-align:right">サイズ</th><th></th></tr></thead><tbody>';
-
-  entries.sort(function(a, b) {
-    if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
-    return a.name.localeCompare(b.name);
+  const flatEntries = entries.map(function(e) {
+    return {
+      path: e.name,
+      isDir: e.is_dir || e.name.endsWith('/'),
+      size: e.size || 0,
+      file: null
+    };
   });
 
-  entries.forEach(function(e, i) {
-    const sizeStr = e.is_dir ? '-' : formatFileSize(e.size || 0);
-    const isPreviewable = !e.is_dir && /\.(png|jpg|jpeg|gif|webp|svg|pdf|txt|md|json|js|css|html|xml|log|py|c|cpp|h|java|sh|pl)$/i.test(e.name);
+  renderTreeExplorer(zipName, flatEntries, async function(node, box) {
+    const extractUrl = API_UPLOAD + '?action=archive_extract&filename=' + encodeURIComponent(zipName) + '&inner_path=' + encodeURIComponent(node.path);
 
-    html += '<tr>';
-    html += '<td>' + (e.is_dir ? '📁 ' : '📄 ') + escapeHtml(e.name) + '</td>';
-    html += '<td style="text-align:right;color:rgba(255,255,255,0.5);font-size:11px">' + sizeStr + '</td>';
-    html += '<td style="text-align:right">';
-    if (isPreviewable) {
-      html += '<span class="zip-entry-link" data-srv-entry-idx="' + i + '">プレビュー</span>';
-    }
-    html += '</td></tr>';
-  });
-
-  html += '</tbody></table>';
-  html += '<div id="zip-preview-box" class="hidden"></div>';
-
-  dom.lightboxZip.innerHTML = html;
-
-  dom.lightboxZip.querySelectorAll('.zip-entry-link').forEach(function(btn) {
-    btn.addEventListener('click', async function(ev) {
-      ev.preventDefault();
-      const idx = parseInt(btn.getAttribute('data-srv-entry-idx'), 10);
-      const entry = entries[idx];
-      if (!entry) return;
-
-      const box = document.getElementById('zip-preview-box');
-      if (!box) return;
-
-      box.classList.remove('hidden');
-      box.innerHTML = '<div style="color:rgba(255,255,255,0.5)">「' + escapeHtml(entry.name) + '」抽出中…</div>';
-
-      const extractUrl = API_UPLOAD + '?action=archive_extract&filename=' + encodeURIComponent(zipName) + '&inner_path=' + encodeURIComponent(entry.name);
-
-      if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(entry.name)) {
+    if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(node.name)) {
+      box.className = 'zip-inner-preview';
+      box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">🖼️ ' + escapeHtml(node.path) + '</div><img src="' + extractUrl + '" class="zip-inner-img" />';
+    } else if (/\.(pdf)$/i.test(node.name)) {
+      box.className = 'zip-inner-preview';
+      box.style.maxHeight = 'none';
+      box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(node.path) + '</div><iframe src="' + extractUrl + '" class="zip-inner-iframe"></iframe>';
+    } else {
+      try {
+        const res = await fetch(extractUrl);
+        const text = await res.text();
         box.className = 'zip-inner-preview';
-        box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">🖼️ ' + escapeHtml(entry.name) + '</div><img src="' + extractUrl + '" class="zip-inner-img" />';
-      } else if (/\.(pdf)$/i.test(entry.name)) {
-        box.className = 'zip-inner-preview';
-        box.style.maxHeight = 'none';
-        box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(entry.name) + '</div><iframe src="' + extractUrl + '" class="zip-inner-iframe"></iframe>';
-      } else {
-        try {
-          const res = await fetch(extractUrl);
-          const text = await res.text();
-          box.className = 'zip-inner-preview';
-          box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(entry.name) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n... (一部のみ表示)' : '');
-        } catch (err) {
-          box.innerHTML = '<div style="color:var(--danger)">プレビュー抽出エラー: ' + escapeHtml(err.message) + '</div>';
-        }
+        box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(node.path) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n... (一部のみ表示)' : '');
+      } catch (err) {
+        box.innerHTML = '<div style="color:var(--danger)">プレビュー抽出エラー: ' + escapeHtml(err.message) + '</div>';
       }
-    });
-  });
+    }
+  }, '(Server Inspect)');
 }
 
 // Lightbox event listeners

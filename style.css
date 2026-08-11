@@ -973,3 +973,101 @@ html, body {
   .preview { padding: 16px; }
   .md-tools { display: none !important; }
 }
+
+/* ---- Windows File Explorer Tree View ---- */
+.tree-explorer-container {
+  margin-top: 12px;
+  background: rgba(15, 17, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 13px;
+}
+
+.tree-view-root {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tree-folder, .tree-file {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.tree-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tree-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  transition: transform 0.15s ease;
+  user-select: none;
+}
+
+.tree-folder.collapsed > .tree-row .tree-toggle {
+  transform: rotate(-90deg);
+}
+
+.tree-folder-icon::before {
+  content: '📂';
+}
+
+.tree-folder.collapsed > .tree-row .tree-folder-icon::before {
+  content: '📁';
+}
+
+.tree-icon {
+  font-size: 14px;
+}
+
+.tree-name {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-size {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: var(--font-mono, monospace);
+  margin-right: 8px;
+}
+
+.tree-children {
+  margin-left: 14px;
+  padding-left: 6px;
+  border-left: 1px dashed rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.tree-folder.collapsed > .tree-children {
+  display: none;
+}
+
