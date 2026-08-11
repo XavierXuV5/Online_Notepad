@@ -4,6 +4,7 @@
 
 import { escapeHtml, getFilePreviewType, API_UPLOAD } from './api.js';
 import { renderTreeExplorer, ensureLibarchiveLoaded } from './treeExplorer.js';
+import { t } from './i18n.js';
 
 let lightboxState = {
   index: 0,
@@ -133,7 +134,7 @@ async function loadArchivePreview(filename) {
   const zipBox = document.getElementById('lightbox-zip');
   if (!zipBox) return;
 
-  zipBox.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6)">ZIP アーカイブ解凍中…</div>';
+  zipBox.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6)">' + escapeHtml(t('archive.uncompressing')) + '</div>';
 
   try {
     const fileUrl = 'uploads/' + encodeURIComponent(filename);
@@ -176,7 +177,7 @@ async function loadArchivePreview(filename) {
           } else {
             const text = await zipEntry.async('text');
             box.className = 'zip-inner-preview';
-            box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(node.path) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n... (一部のみ表示)' : '');
+            box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(node.path) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n' + escapeHtml(t('archive.partial_view')) : '');
           }
         });
         return;
@@ -186,7 +187,7 @@ async function loadArchivePreview(filename) {
       }
     }
   } catch (err) {
-    zipBox.innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger)">アーカイブ読み込みエラー: ' + escapeHtml(err.message) + '</div>';
+    zipBox.innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger)">' + escapeHtml(t('archive.load_error', { msg: err.message })) + '</div>';
   }
 }
 
@@ -194,24 +195,32 @@ async function loadLocalLibarchivePreview(file) {
   const zipBox = document.getElementById('lightbox-zip');
   if (!zipBox) return;
 
-  zipBox.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6)">⚡ WebAssembly (libarchivejs) で .7z アーカイブ解凍中…</div>';
+  zipBox.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6)">' + escapeHtml(t('archive.wasm_7z')) + '</div>';
 
   try {
     const Archive = await ensureLibarchiveLoaded();
     if (!Archive) {
-      throw new Error('libarchive WebAssembly モジュールの読み込みに失敗しました。');
+      throw new Error(t('archive.wasm_error'));
     }
 
     const archive = await Archive.open(file);
 
-    if (archive.hasEncryptedData()) {
-      const pass = prompt('🔒 暗号化された 7z アーカイブです。パスワードを入力してください:');
-      if (pass) {
-        await archive.usePassword(pass);
+    let rawFiles;
+    try {
+      rawFiles = await archive.getFilesArray();
+    } catch (extractErr) {
+      if (archive.hasEncryptedData() || /password|encrypted|crypto/i.test(extractErr.message)) {
+        const pass = prompt(t('archive.encrypted_pass_prompt'));
+        if (pass) {
+          await archive.usePassword(pass);
+          rawFiles = await archive.getFilesArray();
+        } else {
+          throw extractErr;
+        }
+      } else {
+        throw extractErr;
       }
     }
-
-    const rawFiles = await archive.getFilesArray();
     const flatEntries = rawFiles.map(item => {
       const isDir = item.file && item.file._isDir ? true : (item.file && item.file.name ? false : true);
       const fullPath = item.path + (item.file ? item.file.name : '');
@@ -242,11 +251,11 @@ async function loadLocalLibarchivePreview(file) {
       } else {
         const text = await extractedBlobFile.text();
         box.className = 'zip-inner-preview';
-        box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(targetPath) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n... (一部のみ表示)' : '');
+        box.innerHTML = '<div style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:11px">📄 ' + escapeHtml(targetPath) + '</div>' + escapeHtml(text.slice(0, 10000)) + (text.length > 10000 ? '\n\n' + escapeHtml(t('archive.partial_view')) : '');
       }
     });
 
   } catch (err) {
-    zipBox.innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger)">7z アーカイブの解凍に失敗しました: ' + escapeHtml(err.message) + '</div>';
+    zipBox.innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger)">' + escapeHtml(t('archive.7z_error', { msg: err.message })) + '</div>';
   }
 }

@@ -1,24 +1,21 @@
 /* ============================================================
-   File Manager, Folder Navigation, Renaming & Drag-Drop Module
+   File Manager & Drag-Drop Module
    ============================================================ */
 
 import { postToApi, showToast, escapeHtml, formatFileSize, fixEncoding, getFilePreviewType, API_UPLOAD } from './api.js';
 import { openLightbox } from './lightbox.js';
-import { t } from './i18n.js';
+import { t, onLanguageChange } from './i18n.js';
+import { restoreActiveNote } from './notepad.js';
 
 let fileState = {
   files: [],
-  dirs: [],
-  currentPath: '',
   searchQuery: '',
   typeFilter: 'all',
-  renameTarget: null
+  lastServerData: null
 };
 
 export function initFileManager() {
   const uploadInput = document.getElementById('file-upload-input');
-  const folderUploadInput = document.getElementById('folder-upload-input');
-  const newFolderBtn = document.getElementById('new-folder-btn');
   const searchInput = document.getElementById('file-search-input');
   const searchClear = document.getElementById('file-search-clear');
   const typeTabs = document.getElementById('file-type-tabs');
@@ -30,19 +27,6 @@ export function initFileManager() {
         uploadInput.value = '';
       }
     });
-  }
-
-  if (folderUploadInput) {
-    folderUploadInput.addEventListener('change', () => {
-      if (folderUploadInput.files && folderUploadInput.files.length > 0) {
-        uploadFiles(folderUploadInput.files);
-        folderUploadInput.value = '';
-      }
-    });
-  }
-
-  if (newFolderBtn) {
-    newFolderBtn.addEventListener('click', openNewFolderModal);
   }
 
   if (searchInput) {
@@ -73,55 +57,38 @@ export function initFileManager() {
     });
   }
 
-  initFolderModalEvents();
-  initRenameModalEvents();
   initDragAndDropOverlay();
+
+  onLanguageChange(() => {
+    renderFilesList();
+    if (fileState.lastServerData) {
+      updateServerDashboard(fileState.lastServerData);
+    }
+    const dash = document.getElementById('server-dashboard');
+    if (dash && !dash.classList.contains('hidden')) {
+      const noteTitle = document.getElementById('note-title');
+      if (noteTitle) noteTitle.value = t('dashboard.header_title');
+    }
+  });
 }
 
-export async function loadFiles(subPath = '') {
-  fileState.currentPath = subPath;
+export async function loadFiles() {
   try {
-    const data = await postToApi(API_UPLOAD, { action: 'list', path: subPath });
+    const data = await postToApi(API_UPLOAD, { action: 'list' });
     if (data.error) {
       if (data.error === 'unauthorized') return;
-      showToast(t('uploadFail', { error: data.error }));
+      showToast(t('toast.load_files_failed', { error: data.error }));
       return;
     }
     fileState.files = data.files || [];
-    fileState.dirs = data.dirs || [];
-    renderBreadcrumbs();
     renderFilesList();
     if (data.server) {
+      fileState.lastServerData = data.server;
       updateServerDashboard(data.server);
     }
   } catch (e) {
     // Fail gracefully
   }
-}
-
-function renderBreadcrumbs() {
-  const container = document.getElementById('file-breadcrumbs');
-  if (!container) return;
-
-  const parts = fileState.currentPath.split('/').filter(Boolean);
-  let html = '<span class="crumb-item' + (parts.length === 0 ? ' active' : '') + '" data-path="">' + escapeHtml(t('rootFolder')) + '</span>';
-
-  let accum = '';
-  parts.forEach((p, i) => {
-    accum += (accum ? '/' : '') + p;
-    const isLast = (i === parts.length - 1);
-    html += '<span class="crumb-separator">/</span>';
-    html += '<span class="crumb-item' + (isLast ? ' active' : '') + '" data-path="' + escapeHtml(accum) + '">' + escapeHtml(p) + '</span>';
-  });
-
-  container.innerHTML = html;
-
-  container.querySelectorAll('.crumb-item').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const path = btn.getAttribute('data-path');
-      loadFiles(path);
-    });
-  });
 }
 
 export function renderFilesList() {
@@ -130,58 +97,15 @@ export function renderFilesList() {
 
   container.innerHTML = '';
 
-  const totalItems = fileState.dirs.length + fileState.files.length;
-  if (totalItems === 0) {
-    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:24px;font-size:12px">' + escapeHtml(t('noFiles')) + '</p>';
+  if (fileState.files.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:24px;font-size:12px">' + escapeHtml(t('sidebar.empty_files')) + '</p>';
     return;
   }
 
   const query = (fileState.searchQuery || '').toLowerCase().trim();
   const filter = fileState.typeFilter || 'all';
 
-  // Render Folders
-  fileState.dirs.forEach(d => {
-    const displayName = fixEncoding(d.name);
-    if (query && !displayName.toLowerCase().includes(query)) return;
-
-    const item = document.createElement('div');
-    item.className = 'file-item folder-item';
-    item.innerHTML =
-      '<div class="file-thumb folder-thumb">📁</div>' +
-      '<div class="file-info file-info-preview">' +
-        '<div class="file-name" title="' + escapeHtml(displayName) + '">' + escapeHtml(displayName) + '</div>' +
-        '<div class="file-size">文件夹</div>' +
-      '</div>' +
-      '<div class="file-actions">' +
-        '<button class="file-action-btn rename" title="重命名">' +
-          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-        '</button>' +
-        '<button class="file-action-btn delete" title="删除">' +
-          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>' +
-        '</button>' +
-      '</div>';
-
-    // Enter folder click handler
-    item.querySelector('.file-info-preview').addEventListener('click', () => {
-      const nextPath = fileState.currentPath ? fileState.currentPath + '/' + d.name : d.name;
-      loadFiles(nextPath);
-    });
-
-    item.querySelector('.rename').addEventListener('click', (e) => {
-      e.stopPropagation();
-      openRenameModal(d.name, true);
-    });
-
-    item.querySelector('.delete').addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteFileOrFolder(d.name, true);
-    });
-
-    container.appendChild(item);
-  });
-
-  // Render Files
-  const filteredFiles = fileState.files.filter(f => {
+  const filtered = fileState.files.filter(f => {
     const displayName = fixEncoding(f.name);
     if (query && !displayName.toLowerCase().includes(query)) return false;
     if (filter !== 'all') {
@@ -194,7 +118,12 @@ export function renderFilesList() {
     return true;
   });
 
-  filteredFiles.forEach(f => {
+  if (filtered.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:24px;font-size:12px">' + escapeHtml(t('sidebar.no_matching_files')) + '</p>';
+    return;
+  }
+
+  filtered.forEach(f => {
     const item = document.createElement('div');
     item.className = 'file-item';
 
@@ -203,10 +132,8 @@ export function renderFilesList() {
     const canPreview = !!previewType;
     let thumbHtml;
 
-    const fullFilePath = fileState.currentPath ? 'uploads/' + fileState.currentPath + '/' + encodeURIComponent(f.name) : 'uploads/' + encodeURIComponent(f.name);
-
     if (previewType === 'image') {
-      thumbHtml = '<div class="file-thumb file-thumb-preview"><img src="' + fullFilePath + '" alt="" loading="lazy" /></div>';
+      thumbHtml = '<div class="file-thumb file-thumb-preview"><img src="uploads/' + encodeURIComponent(f.name) + '" alt="" loading="lazy" /></div>';
     } else {
       const ext = displayName.split('.').pop().toUpperCase().substring(0, 4);
       thumbHtml = '<div class="file-thumb' + (canPreview ? ' file-thumb-preview' : '') + '">' + escapeHtml(ext) + '</div>';
@@ -218,13 +145,10 @@ export function renderFilesList() {
         '<div class="file-size">' + formatFileSize(f.size) + '</div>' +
       '</div>' +
       '<div class="file-actions">' +
-        '<button class="file-action-btn rename" title="重命名">' +
-          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-        '</button>' +
-        '<button class="file-action-btn copy" title="复制链接">' +
+        '<button class="file-action-btn copy" title="' + escapeHtml(t('file_action.copy_url')) + '">' +
           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
         '</button>' +
-        '<button class="file-action-btn delete" title="删除">' +
+        '<button class="file-action-btn delete" title="' + escapeHtml(t('file_action.delete')) + '">' +
           '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>' +
         '</button>' +
       '</div>';
@@ -240,21 +164,13 @@ export function renderFilesList() {
       if (infoEl) infoEl.addEventListener('click', openPrev);
     }
 
-    const renameBtn = item.querySelector('.rename');
-    if (renameBtn) {
-      renameBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openRenameModal(f.name, false);
-      });
-    }
-
     const copyBtn = item.querySelector('.copy');
     if (copyBtn) {
       copyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const url = location.origin + location.pathname.replace(/\/[^/]*$/, '/') + fullFilePath;
+        const url = location.origin + location.pathname.replace(/\/[^/]*$/, '/uploads/') + encodeURIComponent(f.name);
         navigator.clipboard.writeText(url);
-        showToast(t('copyUrlSuccess'));
+        showToast(t('toast.url_copied'));
       });
     }
 
@@ -262,7 +178,7 @@ export function renderFilesList() {
     if (delBtn) {
       delBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        deleteFileOrFolder(f.name, false);
+        deleteFile(f.name);
       });
     }
 
@@ -271,143 +187,49 @@ export function renderFilesList() {
 }
 
 export async function uploadFiles(filesList) {
-  const total = filesList.length;
-  for (let i = 0; i < total; i++) {
+  for (let i = 0; i < filesList.length; i++) {
     const file = filesList[i];
-    const relPath = file.webkitRelativePath || file.name;
-    showToast(t('uploading', { name: file.name }));
+    showToast(t('toast.uploading', { name: file.name }));
 
     try {
       const fd = new FormData();
       fd.append('action', 'upload');
       fd.append('file', file);
-      if (fileState.currentPath) {
-        fd.append('relative_path', fileState.currentPath + '/' + relPath);
-      } else if (file.webkitRelativePath) {
-        fd.append('relative_path', file.webkitRelativePath);
-      }
 
       const res = await fetch(API_UPLOAD, { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json();
 
       if (data.error) {
-        showToast(t('uploadFail', { error: data.error }));
+        showToast(t('toast.upload_failed_msg', { error: data.error }));
       } else {
-        showToast(t('uploadSuccess', { name: file.name }));
+        showToast(t('toast.uploaded_success', { name: file.name }));
       }
     } catch (e) {
-      showToast(t('uploadFail', { error: e.message || 'Error' }));
+      showToast(t('toast.upload_error'));
     }
   }
 
-  await loadFiles(fileState.currentPath);
+  await loadFiles();
 }
 
-function openNewFolderModal() {
-  const modal = document.getElementById('new-folder-modal');
-  const input = document.getElementById('new-folder-name');
-  if (input) input.value = '';
-  if (modal) modal.classList.remove('hidden');
-  if (input) input.focus();
-}
-
-function initFolderModalEvents() {
-  const modal = document.getElementById('new-folder-modal');
-  const cancelBtn = document.getElementById('new-folder-cancel');
-  const confirmBtn = document.getElementById('new-folder-confirm');
-  const input = document.getElementById('new-folder-name');
-
-  if (cancelBtn && modal) {
-    cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
-  }
-
-  if (confirmBtn) {
-    confirmBtn.addEventListener('click', async () => {
-      const folderName = (input ? input.value : '').trim();
-      if (!folderName) return;
-
-      try {
-        const fullFolderName = fileState.currentPath ? fileState.currentPath + '/' + folderName : folderName;
-        const data = await postToApi(API_UPLOAD, { action: 'mkdir', folder_name: fullFolderName });
-
-        if (data.error) {
-          showToast(t('mkdirFail', { error: data.error }));
-        } else {
-          showToast(t('mkdirSuccess', { name: folderName }));
-          if (modal) modal.classList.add('hidden');
-          await loadFiles(fileState.currentPath);
-        }
-      } catch (e) {
-        showToast(t('mkdirFail', { error: e.message || 'Error' }));
-      }
-    });
-  }
-}
-
-function openRenameModal(name, isFolder) {
-  fileState.renameTarget = { name, isFolder };
-  const modal = document.getElementById('file-rename-modal');
-  const input = document.getElementById('file-rename-input');
-  if (input) input.value = name;
-  if (modal) modal.classList.remove('hidden');
-  if (input) input.focus();
-}
-
-function initRenameModalEvents() {
-  const modal = document.getElementById('file-rename-modal');
-  const cancelBtn = document.getElementById('file-rename-cancel');
-  const confirmBtn = document.getElementById('file-rename-confirm');
-  const input = document.getElementById('file-rename-input');
-
-  if (cancelBtn && modal) {
-    cancelBtn.addEventListener('click', () => modal.classList.add('hidden'));
-  }
-
-  if (confirmBtn) {
-    confirmBtn.addEventListener('click', async () => {
-      if (!fileState.renameTarget) return;
-      const newName = (input ? input.value : '').trim();
-      const oldName = fileState.renameTarget.name;
-      if (!newName || newName === oldName) return;
-
-      try {
-        const oldPath = fileState.currentPath ? fileState.currentPath + '/' + oldName : oldName;
-        const newPath = fileState.currentPath ? fileState.currentPath + '/' + newName : newName;
-
-        const data = await postToApi(API_UPLOAD, { action: 'rename', old_name: oldPath, new_name: newPath });
-
-        if (data.error) {
-          showToast(t('renameFail', { error: data.error }));
-        } else {
-          showToast(t('renameSuccess'));
-          if (modal) modal.classList.add('hidden');
-          await loadFiles(fileState.currentPath);
-        }
-      } catch (e) {
-        showToast(t('renameFail', { error: e.message || 'Error' }));
-      }
-    });
-  }
-}
-
-async function deleteFileOrFolder(filename, isFolder) {
-  const fullPath = fileState.currentPath ? fileState.currentPath + '/' + filename : filename;
-  if (!confirm(t('deleteConfirm', { name: filename }))) return;
+async function deleteFile(filename) {
+  if (!confirm(t('toast.delete_confirm', { filename: filename }))) return;
 
   try {
-    const data = await postToApi(API_UPLOAD, { action: 'delete', filename: fullPath });
+    const data = await postToApi(API_UPLOAD, { action: 'delete', filename: filename });
     if (data.error) {
-      showToast(t('deleteFail', { error: data.error }));
+      showToast(t('toast.delete_failed', { error: data.error }));
     } else {
-      showToast(t('deleteSuccess'));
-      await loadFiles(fileState.currentPath);
+      showToast(t('toast.deleted_success'));
+      await loadFiles();
     }
   } catch (e) {
-    showToast(t('deleteFail', { error: e.message || 'Error' }));
+    showToast(t('toast.delete_error'));
   }
 }
 
 function updateServerDashboard(srv) {
+  fileState.lastServerData = srv;
   const setTxt = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.textContent = val || '--';
@@ -432,7 +254,7 @@ function updateServerDashboard(srv) {
   if (bar) bar.style.width = pct + '%';
 
   const badge = document.getElementById('storage-pct-badge');
-  if (badge) badge.textContent = pct + '% ' + t('storageUsage');
+  if (badge) badge.textContent = t('dashboard.storage_pct', { pct: pct });
 }
 
 function initDragAndDropOverlay() {
@@ -458,48 +280,58 @@ function initDragAndDropOverlay() {
     }
   });
 
-  window.addEventListener('drop', async (e) => {
+  window.addEventListener('drop', (e) => {
     e.preventDefault();
     dragCounter = 0;
     if (overlay) overlay.classList.add('hidden');
 
-    if (e.dataTransfer && e.dataTransfer.items) {
-      const items = e.dataTransfer.items;
-      const filesToUpload = [];
-
-      const scanEntry = async (entry, path = '') => {
-        if (entry.isFile) {
-          const file = await new Promise(resolve => entry.file(resolve));
-          Object.defineProperty(file, 'webkitRelativePath', {
-            value: path ? path + '/' + file.name : file.name
-          });
-          filesToUpload.push(file);
-        } else if (entry.isDirectory) {
-          const dirReader = entry.createReader();
-          const entries = await new Promise(resolve => dirReader.readEntries(resolve));
-          for (const child of entries) {
-            await scanEntry(child, path ? path + '/' + entry.name : entry.name);
-          }
-        }
-      };
-
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.webkitGetAsEntry) {
-          const entry = item.webkitGetAsEntry();
-          if (entry) await scanEntry(entry);
-        }
-      }
-
-      if (filesToUpload.length > 0) {
-        const filesTab = document.querySelector('.sidebar-tab[data-tab="files"]');
-        if (filesTab) filesTab.click();
-        uploadFiles(filesToUpload);
-      } else if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        const filesTab = document.querySelector('.sidebar-tab[data-tab="files"]');
-        if (filesTab) filesTab.click();
-        uploadFiles(e.dataTransfer.files);
-      }
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const filesTab = document.querySelector('.sidebar-tab[data-tab="files"]');
+      if (filesTab) filesTab.click();
+      uploadFiles(e.dataTransfer.files);
     }
   });
+}
+
+export function showServerDashboard() {
+  const dash = document.getElementById('server-dashboard');
+  const editorContainer = document.getElementById('editor-container');
+  const noteTitle = document.getElementById('note-title');
+  const mdTools = document.getElementById('md-tools');
+  const viewModeBtn = document.getElementById('view-mode-btn');
+  const saveBtn = document.getElementById('save-btn');
+  const saveIndicator = document.getElementById('save-indicator');
+  const statusBar = document.querySelector('.status-bar');
+
+  if (dash) dash.classList.remove('hidden');
+  if (editorContainer) editorContainer.classList.add('hidden');
+  if (noteTitle) {
+    noteTitle.value = t('dashboard.header_title');
+    noteTitle.disabled = true;
+  }
+  if (mdTools) mdTools.classList.add('hidden');
+  if (viewModeBtn) viewModeBtn.classList.add('hidden');
+  if (saveBtn) saveBtn.classList.add('hidden');
+  if (saveIndicator) saveIndicator.classList.add('hidden');
+  if (statusBar) statusBar.classList.add('hidden');
+
+  loadFiles();
+}
+
+export function hideServerDashboard() {
+  const dash = document.getElementById('server-dashboard');
+  const editorContainer = document.getElementById('editor-container');
+  const noteTitle = document.getElementById('note-title');
+  const saveBtn = document.getElementById('save-btn');
+  const saveIndicator = document.getElementById('save-indicator');
+  const statusBar = document.querySelector('.status-bar');
+
+  if (dash) dash.classList.add('hidden');
+  if (editorContainer) editorContainer.classList.remove('hidden');
+  if (noteTitle) noteTitle.disabled = false;
+  if (saveBtn) saveBtn.classList.remove('hidden');
+  if (saveIndicator) saveIndicator.classList.remove('hidden');
+  if (statusBar) statusBar.classList.remove('hidden');
+
+  restoreActiveNote();
 }

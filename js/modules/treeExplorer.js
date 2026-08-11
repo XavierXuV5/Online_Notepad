@@ -3,6 +3,7 @@
    ============================================================ */
 
 import { escapeHtml, fixEncoding, formatFileSize } from './api.js';
+import { t } from './i18n.js';
 
 let wasmArchiveModule = null;
 
@@ -10,13 +11,16 @@ let wasmArchiveModule = null;
  * Lazy import and initialize WebAssembly libarchivejs module on-demand
  */
 export async function ensureLibarchiveLoaded() {
-  if (window.Archive) return window.Archive;
   if (wasmArchiveModule) return wasmArchiveModule;
 
   try {
-    const mod = await import('../../libarchive/main.js');
+    const basePath = location.pathname.replace(/\/[^/]*$/, '/');
+    const wasmMainUrl = new URL('libarchive/main.js', location.origin + basePath).href;
+    const workerUrl = new URL('libarchive/worker-bundle.js', location.origin + basePath).href;
+
+    const mod = await import(wasmMainUrl);
     if (mod && mod.Archive) {
-      mod.Archive.init({ workerUrl: 'libarchive/worker-bundle.js' });
+      mod.Archive.init({ workerUrl: workerUrl });
       wasmArchiveModule = mod.Archive;
       return wasmArchiveModule;
     }
@@ -108,7 +112,7 @@ export function renderArchiveTreeHtml(node) {
       html += '    <span class="tree-name" title="' + escapeHtml(child.name) + '">' + escapeHtml(child.name) + '</span>';
       html += '    <span class="tree-size">' + formatFileSize(child.size) + '</span>';
       if (isPreviewable) {
-        html += '    <span class="zip-entry-link" data-tree-extract="' + escapeHtml(child.path) + '">プレビュー</span>';
+        html += '    <span class="zip-entry-link" data-tree-extract="' + escapeHtml(child.path) + '">' + escapeHtml(t('archive.preview_link')) + '</span>';
       }
       html += '  </div>';
       html += '</div>';
@@ -138,7 +142,7 @@ export function attachTreeExplorerEvents(containerEl, rootNode, onExtractFile) {
       if (!box) return;
 
       box.classList.remove('hidden');
-      box.innerHTML = '<div style="color:rgba(255,255,255,0.6)">「' + escapeHtml(path) + '」解凍中…</div>';
+      box.innerHTML = '<div style="color:rgba(255,255,255,0.6)">' + escapeHtml(t('archive.extracting', { path: path })) + '</div>';
 
       const findNode = (n, targetPath) => {
         if (!n || !n.children) return null;
@@ -158,7 +162,7 @@ export function attachTreeExplorerEvents(containerEl, rootNode, onExtractFile) {
         try {
           await onExtractFile(targetNode, box);
         } catch (err) {
-          box.innerHTML = '<div style="color:var(--danger)">解凍エラー: ' + escapeHtml(err.message) + '</div>';
+          box.innerHTML = '<div style="color:var(--danger)">' + escapeHtml(t('archive.extract_error', { msg: err.message })) + '</div>';
         }
       }
     });
@@ -171,7 +175,7 @@ export function renderTreeExplorer(zipName, flatEntries, onExtractFile, badgeTex
   let html = '';
   html += '<div class="zip-header">';
   html += '  <div class="zip-title">📦 ' + escapeHtml(zipName) + '</div>';
-  html += '  <div class="zip-meta">' + (badgeText || (flatEntries.length + ' 個のアイテム')) + '</div>';
+  html += '  <div class="zip-meta">' + (badgeText || t('archive.items_count', { n: flatEntries.length })) + '</div>';
   html += '</div>';
 
   html += '<div class="tree-explorer-container">';

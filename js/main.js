@@ -4,32 +4,20 @@
 
 import { postToApi, showToast, sanitizeName, API_AUTH, API_NOTES } from './modules/api.js';
 import { initTheme } from './modules/theme.js';
+import { initI18n, setLanguage, t } from './modules/i18n.js';
 import { initNotepad, loadNotes, openNote } from './modules/notepad.js';
-import { initFileManager, loadFiles } from './modules/fileManager.js';
+import { initFileManager, loadFiles, showServerDashboard, hideServerDashboard } from './modules/fileManager.js';
 import { initLightbox } from './modules/lightbox.js';
-import { setLanguage, updateUI, t } from './modules/i18n.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  initI18n();
   initTheme();
   initNotepad();
   initFileManager();
   initLightbox();
   initAppShell();
-  initLanguage();
   checkAuth();
 });
-
-function initLanguage() {
-  updateUI();
-  const langSelect = document.getElementById('lang-select');
-  if (langSelect) {
-    langSelect.addEventListener('change', () => {
-      setLanguage(langSelect.value);
-      loadNotes();
-      loadFiles();
-    });
-  }
-}
 
 async function checkAuth() {
   try {
@@ -54,6 +42,15 @@ function showApp() {
 }
 
 function initAppShell() {
+  // Language Switcher Buttons
+  const langBtns = document.querySelectorAll('.lang-btn');
+  langBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.getAttribute('data-lang-val');
+      if (val) setLanguage(val);
+    });
+  });
+
   // Password Form submit
   const passwordForm = document.getElementById('password-form');
   const passwordInput = document.getElementById('password-input');
@@ -72,13 +69,13 @@ function initAppShell() {
           showApp();
         } else {
           if (authError) {
-            authError.textContent = data.error || 'パスワードが違います。';
+            authError.textContent = data.error || t('auth.error_wrong');
             authError.classList.remove('hidden');
           }
         }
       } catch (err) {
         if (authError) {
-          authError.textContent = err.message || '接続エラーが発生しました';
+          authError.textContent = err.message || t('auth.error_network');
           authError.classList.remove('hidden');
         }
       }
@@ -98,6 +95,12 @@ function initAppShell() {
 
       if (panelNotes) panelNotes.classList.toggle('active', targetTab === 'notes');
       if (panelFiles) panelFiles.classList.toggle('active', targetTab === 'files');
+
+      if (targetTab === 'files') {
+        showServerDashboard();
+      } else {
+        hideServerDashboard();
+      }
     });
   });
 
@@ -157,7 +160,7 @@ function initAppShell() {
     newNoteConfirm.addEventListener('click', async () => {
       const name = sanitizeName(newNoteName ? newNoteName.value : '');
       if (!name) {
-        showToast('メモ名を入力してください');
+        showToast(t('toast.note_name_required'));
         return;
       }
 
@@ -168,15 +171,15 @@ function initAppShell() {
       try {
         const data = await postToApi(API_NOTES, { action: 'save', filename: fn, content: '' });
         if (data.error) {
-          showToast('作成失敗: ' + data.error);
+          showToast(t('toast.note_create_failed', { error: data.error }));
           return;
         }
         if (newNoteModal) newNoteModal.classList.add('hidden');
-        showToast('「' + name + '」を作成しました');
+        showToast(t('toast.note_created', { name: name }));
         await loadNotes();
         openNote({ filename: fn, title: name, format: fmt });
       } catch (e) {
-        showToast('メモの作成に失敗しました');
+        showToast(t('toast.note_create_error'));
       }
     });
   }
@@ -203,6 +206,14 @@ function initAppShell() {
   if (changePwCancel && changePwModal) {
     changePwCancel.addEventListener('click', () => changePwModal.classList.add('hidden'));
   }
+  const changePwForm = document.getElementById('change-pw-form');
+  if (changePwForm) {
+    changePwForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (changePwConfirm) changePwConfirm.click();
+    });
+  }
+
   if (changePwConfirm) {
     changePwConfirm.addEventListener('click', async () => {
       const cur = currentPw ? currentPw.value : '';
@@ -211,7 +222,7 @@ function initAppShell() {
 
       if (!cur || !n1 || !n2) {
         if (pwChangeError) {
-          pwChangeError.textContent = 'すべてのフィールドを入力してください';
+          pwChangeError.textContent = t('toast.fill_all_fields');
           pwChangeError.classList.remove('hidden');
         }
         return;
@@ -219,7 +230,7 @@ function initAppShell() {
 
       if (n1 !== n2) {
         if (pwChangeError) {
-          pwChangeError.textContent = '新しいパスワードが一致しません';
+          pwChangeError.textContent = t('toast.pw_mismatch');
           pwChangeError.classList.remove('hidden');
         }
         return;
@@ -227,7 +238,7 @@ function initAppShell() {
 
       if (n1.length < 4) {
         if (pwChangeError) {
-          pwChangeError.textContent = 'パスワードは4文字以上にしてください';
+          pwChangeError.textContent = t('toast.pw_min_length');
           pwChangeError.classList.remove('hidden');
         }
         return;
@@ -236,17 +247,17 @@ function initAppShell() {
       try {
         const data = await postToApi(API_AUTH, { action: 'change_password', current_password: cur, new_password: n1 });
         if (data.success) {
-          showToast('パスワードを変更しました');
+          showToast(t('toast.pw_changed'));
           if (changePwModal) changePwModal.classList.add('hidden');
         } else {
           if (pwChangeError) {
-            pwChangeError.textContent = data.error || 'パスワード変更に失敗しました';
+            pwChangeError.textContent = data.error || t('toast.pw_change_failed');
             pwChangeError.classList.remove('hidden');
           }
         }
       } catch (e) {
         if (pwChangeError) {
-          pwChangeError.textContent = '接続エラーが発生しました';
+          pwChangeError.textContent = t('auth.error_network');
           pwChangeError.classList.remove('hidden');
         }
       }

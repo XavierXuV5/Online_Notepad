@@ -27,18 +27,18 @@
         <img src="icon.png" alt="Notepad Icon" class="lock-icon-img" />
       </div>
       <h1 class="lock-title">Online Notepad</h1>
-      <p class="lock-subtitle">パスワードを入力してください</p>
+      <p class="lock-subtitle" data-i18n="lock.subtitle">パスワードを入力してください</p>
       <form id="password-form" autocomplete="off">
         <div class="input-group">
-          <input type="password" id="password-input" class="password-input" placeholder="パスワード" autofocus autocomplete="current-password" />
+          <input type="password" id="password-input" class="password-input" placeholder="パスワード" data-i18n-placeholder="lock.placeholder" autofocus autocomplete="current-password" />
           <button type="submit" id="unlock-btn" class="unlock-btn">
-            <span class="btn-text">開く</span>
+            <span class="btn-text" data-i18n="lock.unlock">開く</span>
             <svg class="btn-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
-        <p id="auth-error" class="auth-error hidden">パスワードが違います。もう一度お試しください。</p>
+        <p id="auth-error" class="auth-error hidden" data-i18n="auth.error_wrong">パスワードが違います。もう一度お試しください。</p>
       </form>
-      <div class="lock-footer">MD5 暗号化ハッシュで保護</div>
+      <div class="lock-footer" data-i18n="lock.footer">MD5 暗号化ハッシュで保護</div>
     </div>
   </div>
 
@@ -50,17 +50,17 @@
       <div class="sidebar-header">
         <div class="brand">
           <img src="icon.png" alt="" class="brand-icon" />
-          <span>Notepad</span>
+          <span data-i18n="sidebar.brand">Notepad</span>
         </div>
-        <button id="sidebar-toggle" class="icon-btn" title="サイドバーを閉じる">
+        <button id="sidebar-toggle" class="icon-btn" title="サイドバーを閉じる" data-i18n-title="sidebar.close_tooltip">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
         </button>
       </div>
 
       <!-- サイドバー タブ切り替え -->
       <div class="sidebar-tabs">
-        <button class="sidebar-tab active" data-tab="notes">メモ</button>
-        <button class="sidebar-tab" data-tab="files">ファイル</button>
+        <button class="sidebar-tab active" data-tab="notes" data-i18n="sidebar.tab_notes">メモ</button>
+        <button class="sidebar-tab" data-tab="files" data-i18n="sidebar.tab_files">ファイル</button>
       </div>
 
       <!-- メモタブ -->
@@ -68,7 +68,7 @@
         <div class="sidebar-actions">
           <button id="new-note-btn" class="new-note-btn">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            新しいメモ
+            <span data-i18n="sidebar.new_note">新しいメモ</span>
           </button>
         </div>
         <div class="notes-list" id="notes-list"></div>
@@ -76,40 +76,27 @@
 
       <!-- ファイルタブ -->
       <div class="sidebar-panel" id="panel-files">
-        <div class="sidebar-actions file-sidebar-actions">
-          <label class="upload-btn" id="upload-btn-label" title="文件上传" data-i18n-title="uploadBtn">
+        <div class="sidebar-actions">
+          <label class="upload-btn" id="upload-btn-label">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span data-i18n="uploadBtn">文件</span>
+            <span data-i18n="sidebar.upload">アップロード</span>
             <input type="file" id="file-upload-input" multiple hidden />
           </label>
-          <label class="upload-btn upload-folder-btn" id="upload-folder-btn-label" title="文件夹上传" data-i18n-title="uploadFolderBtn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="12 11 12 17"/><polyline points="9 14 12 11 15 14"/></svg>
-            <span data-i18n="uploadFolderBtn">文件夹</span>
-            <input type="file" id="folder-upload-input" webkitdirectory directory multiple hidden />
-          </label>
-          <button id="new-folder-btn" class="icon-action-btn" title="新建文件夹" data-i18n-title="newFolderBtn">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-          </button>
-        </div>
-
-        <!-- 面包屑路径导航栏 -->
-        <div id="file-breadcrumbs" class="file-breadcrumbs">
-          <span class="crumb-item active" data-path="" data-i18n="rootFolder">根目录</span>
         </div>
 
         <!-- 文件搜索与分类筛选栏 -->
         <div class="file-filter-bar">
           <div class="file-search-wrap">
             <svg class="file-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="file-search-input" class="file-search-input" placeholder="搜索文件..." data-i18n-placeholder="searchFilesPlaceholder" />
-            <button id="file-search-clear" class="file-search-clear hidden" title="清空搜索">×</button>
+            <input type="text" id="file-search-input" class="file-search-input" placeholder="ファイルを検索..." data-i18n-placeholder="sidebar.search_placeholder" />
+            <button id="file-search-clear" class="file-search-clear hidden" title="検索をクリア" data-i18n-title="sidebar.clear_search">×</button>
           </div>
           <div class="file-type-tabs" id="file-type-tabs">
-            <button class="file-type-tab active" data-type="all" data-i18n="filterAll">全部</button>
-            <button class="file-type-tab" data-type="image" title="图片">🖼️</button>
-            <button class="file-type-tab" data-type="doc" title="文档">📄</button>
-            <button class="file-type-tab" data-type="zip" title="压缩包">📦</button>
-            <button class="file-type-tab" data-type="video" title="视频">🎬</button>
+            <button class="file-type-tab active" data-type="all" data-i18n="sidebar.filter_all">すべて</button>
+            <button class="file-type-tab" data-type="image" title="画像" data-i18n-title="sidebar.filter_image">🖼️</button>
+            <button class="file-type-tab" data-type="doc" title="ドキュメント" data-i18n-title="sidebar.filter_doc">📄</button>
+            <button class="file-type-tab" data-type="zip" title="アーカイブ" data-i18n-title="sidebar.filter_zip">📦</button>
+            <button class="file-type-tab" data-type="video" title="動画" data-i18n-title="sidebar.filter_video">🎬</button>
           </div>
         </div>
 
@@ -119,31 +106,30 @@
       <!-- サイドバーフッター -->
       <div class="sidebar-footer">
         <div class="lang-selector-wrap">
-          <svg class="lang-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          <select id="lang-select" class="lang-select" title="语言/Language">
-            <option value="zh">中文</option>
-            <option value="ja">日本語</option>
-            <option value="en">English</option>
-          </select>
+          <div class="lang-selector" id="lang-selector">
+            <button class="lang-btn active" data-lang-val="ja" title="日本語">🇯🇵 日本語</button>
+            <button class="lang-btn" data-lang-val="zh" title="中文">🇨🇳 中文</button>
+            <button class="lang-btn" data-lang-val="en" title="English">🇺🇸 EN</button>
+          </div>
         </div>
         <div class="theme-selector">
-          <button class="theme-btn active" data-theme-val="light" title="浅色模式">
+          <button class="theme-btn active" data-theme-val="light" title="ライトテーマ" data-i18n-title="theme.light">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           </button>
-          <button class="theme-btn" data-theme-val="dark" title="深色模式">
+          <button class="theme-btn" data-theme-val="dark" title="ダークテーマ" data-i18n-title="theme.dark">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           </button>
-          <button class="theme-btn" data-theme-val="sumeru" title="须弥主题">
-            <img src="Xumi.webp" alt="须弥" class="theme-icon-img" />
+          <button class="theme-btn" data-theme-val="sumeru" title="須弥テーマ" data-i18n-title="theme.sumeru">
+            <img src="Xumi.webp" alt="須弥" class="theme-icon-img" />
           </button>
         </div>
-        <button id="change-password-btn" class="sidebar-footer-btn" title="パスワード変更">
+        <button id="change-password-btn" class="sidebar-footer-btn" title="パスワード変更" data-i18n-title="sidebar.change_password">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          パスワード変更
+          <span data-i18n="sidebar.change_password">パスワード変更</span>
         </button>
-        <button id="logout-btn" class="sidebar-footer-btn" title="ロック">
+        <button id="logout-btn" class="sidebar-footer-btn" title="ロック" data-i18n-title="sidebar.lock">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          ロック
+          <span data-i18n="sidebar.lock">ロック</span>
         </button>
       </div>
     </aside>
@@ -152,44 +138,44 @@
     <main class="editor-area">
       <header class="toolbar">
         <div class="toolbar-left">
-          <button id="mobile-sidebar-btn" class="icon-btn" title="サイドバー">
+          <button id="mobile-sidebar-btn" class="icon-btn" title="サイドバー" data-i18n-title="toolbar.sidebar_tooltip">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
-          <input type="text" id="note-title" class="note-title-input" placeholder="タイトルなし" />
+          <input type="text" id="note-title" class="note-title-input" placeholder="タイトルなし" data-i18n-placeholder="toolbar.untitled" />
         </div>
         <div class="toolbar-right">
-          <span id="save-indicator" class="save-indicator">保存済み</span>
+          <span id="save-indicator" class="save-indicator" data-i18n="save_status.saved">保存済み</span>
 
           <!-- MD クイックツールバー（.md 時のみ表示） -->
           <div id="md-tools" class="md-tools hidden">
-            <button class="md-tool-btn" id="md-bold" title="太字 **B**"><b>B</b></button>
-            <button class="md-tool-btn" id="md-italic" title="斜体 *I*"><i>I</i></button>
-            <button class="md-tool-btn" id="md-heading" title="見出し #">H</button>
-            <button class="md-tool-btn" id="md-list" title="リスト -">•</button>
-            <button class="md-tool-btn" id="md-quote" title="引用 >">"</button>
-            <button class="md-tool-btn" id="md-code" title="コード ```">&lt;&gt;</button>
-            <button class="md-tool-btn" id="md-toc-toggle" title="目次 (TOC)">📑</button>
+            <button class="md-tool-btn" id="md-bold" title="太字 **B**" data-i18n-title="md_tool.bold"><b>B</b></button>
+            <button class="md-tool-btn" id="md-italic" title="斜体 *I*" data-i18n-title="md_tool.italic"><i>I</i></button>
+            <button class="md-tool-btn" id="md-heading" title="見出し #" data-i18n-title="md_tool.heading">H</button>
+            <button class="md-tool-btn" id="md-list" title="リスト -" data-i18n-title="md_tool.list">•</button>
+            <button class="md-tool-btn" id="md-quote" title="引用 >" data-i18n-title="md_tool.quote">"</button>
+            <button class="md-tool-btn" id="md-code" title="コード ```" data-i18n-title="md_tool.code">&lt;&gt;</button>
+            <button class="md-tool-btn" id="md-toc-toggle" title="目次 (TOC)" data-i18n-title="md_tool.toc">📑</button>
           </div>
 
           <!-- 表示モード切替ボタン（.md 時のみ表示） -->
-          <button id="view-mode-btn" class="view-mode-btn hidden" title="表示モード切替">
-            <span id="view-mode-text">編集</span>
+          <button id="view-mode-btn" class="view-mode-btn hidden" title="表示モード切替" data-i18n-title="toolbar.view_mode_tooltip">
+            <span id="view-mode-text" data-i18n="view_mode.edit">編集</span>
           </button>
 
-          <button id="save-btn" class="save-btn" title="保存 (Ctrl+S)">保存</button>
+          <button id="save-btn" class="save-btn" title="保存 (Ctrl+S)" data-i18n-title="toolbar.save_tooltip" data-i18n="toolbar.save">保存</button>
         </div>
       </header>
 
       <!-- エディタ + プレビュー（分割対応） -->
       <div class="editor-container" id="editor-container" data-view="edit">
-        <textarea id="editor" class="editor" placeholder="ここにメモを入力してください…&#10;&#10;ヒント：Ctrl+S で保存。" spellcheck="false"></textarea>
+        <textarea id="editor" class="editor" placeholder="ここにメモを入力してください…&#10;&#10;ヒント：Ctrl+S で保存。" data-i18n-placeholder="editor.placeholder" spellcheck="false"></textarea>
         <div class="split-divider" id="split-divider"></div>
         <div id="preview" class="preview"></div>
         <!-- TOC 目次浮層 -->
         <div id="md-toc-sidebar" class="md-toc-sidebar hidden">
           <div class="md-toc-header">
-            <span class="md-toc-title">📑 目次アウトライン</span>
-            <button id="md-toc-close" class="md-toc-close-btn" title="目次を閉じる">×</button>
+            <span class="md-toc-title" data-i18n="toc.title">📑 目次アウトライン</span>
+            <button id="md-toc-close" class="md-toc-close-btn" title="目次を閉じる" data-i18n-title="toc.close">×</button>
           </div>
           <div id="md-toc-list" class="md-toc-list"></div>
         </div>
@@ -201,7 +187,7 @@
         <!-- 1. 容量情報ビジュアルセクション -->
         <div class="storage-card">
           <div class="storage-card-header">
-            <span class="storage-title">ストレージ容量 (/home)</span>
+            <span class="storage-title" data-i18n="dashboard.storage_title">ストレージ容量 (/home)</span>
             <span class="storage-pct-badge" id="storage-pct-badge">--% 使用中</span>
           </div>
 
@@ -212,15 +198,15 @@
 
           <div class="storage-details">
             <div class="storage-detail-item">
-              <span class="storage-detail-label">総容量:</span>
+              <span class="storage-detail-label" data-i18n="dashboard.total_space">総容量:</span>
               <strong id="storage-total">--</strong>
             </div>
             <div class="storage-detail-item">
-              <span class="storage-detail-label">使用済み:</span>
+              <span class="storage-detail-label" data-i18n="dashboard.used_space">使用済み:</span>
               <strong id="storage-used">--</strong>
             </div>
             <div class="storage-detail-item">
-              <span class="storage-detail-label">空き容量:</span>
+              <span class="storage-detail-label" data-i18n="dashboard.free_space">空き容量:</span>
               <strong id="storage-free">--</strong>
             </div>
           </div>
@@ -229,43 +215,43 @@
         <!-- 2. システムスペック リスト -->
         <div class="dash-list">
           <div class="dash-row">
-            <span class="dash-key">CPU 構成</span>
+            <span class="dash-key" data-i18n="dashboard.cpu_spec">CPU 構成</span>
             <span class="dash-val" id="server-cpu">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">CPU 平均ロード (Load Average)</span>
+            <span class="dash-key" data-i18n="dashboard.cpu_load">CPU 平均ロード (Load Average)</span>
             <span class="dash-val" id="server-load">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">プロセッサ アーキテクチャ</span>
+            <span class="dash-key" data-i18n="dashboard.arch">プロセッサ アーキテクチャ</span>
             <span class="dash-val" id="server-arch">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">全物理メモリ (RAM)</span>
+            <span class="dash-key" data-i18n="dashboard.ram_total">全物理メモリ (RAM)</span>
             <span class="dash-val" id="server-ram-total">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">空きメモリ (Available RAM)</span>
+            <span class="dash-key" data-i18n="dashboard.ram_free">空きメモリ (Available RAM)</span>
             <span class="dash-val" id="server-ram-free">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">アクティブ プロセス数</span>
+            <span class="dash-key" data-i18n="dashboard.active_proc">アクティブ プロセス数</span>
             <span class="dash-val" id="server-proc">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">OS &amp; カーネル</span>
+            <span class="dash-key" data-i18n="dashboard.os_kernel">OS &amp; カーネル</span>
             <span class="dash-val" id="server-os">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">ホスト名</span>
+            <span class="dash-key" data-i18n="dashboard.hostname">ホスト名</span>
             <span class="dash-val" id="server-hostname">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">システム稼働時間 (Uptime)</span>
+            <span class="dash-key" data-i18n="dashboard.uptime">システム稼働時間 (Uptime)</span>
             <span class="dash-val" id="server-uptime">--</span>
           </div>
           <div class="dash-row">
-            <span class="dash-key">Perl 実行環境</span>
+            <span class="dash-key" data-i18n="dashboard.perl_env">Perl 実行環境</span>
             <span class="dash-val" id="server-perl">--</span>
           </div>
         </div>
@@ -284,49 +270,19 @@
   <!-- モーダル：新規メモ作成 -->
   <div id="new-note-modal" class="modal-overlay hidden">
     <div class="modal">
-      <h2 class="modal-title">新しいメモを作成</h2>
+      <h2 class="modal-title" data-i18n="modal_note.title">新しいメモを作成</h2>
       <div class="modal-body">
-        <label class="modal-label">メモ名</label>
-        <input type="text" id="new-note-name" class="modal-input" placeholder="例：アイデアメモ" />
-        <label class="modal-label">フォーマット</label>
+        <label class="modal-label" data-i18n="modal_note.name_label">メモ名</label>
+        <input type="text" id="new-note-name" class="modal-input" placeholder="例：アイデアメモ" data-i18n-placeholder="modal_note.name_placeholder" />
+        <label class="modal-label" data-i18n="modal_note.fmt_label">フォーマット</label>
         <div class="format-radio-group">
-          <label class="radio-label"><input type="radio" name="new-note-fmt" value="txt" checked /> .txt（プレーンテキスト）</label>
-          <label class="radio-label"><input type="radio" name="new-note-fmt" value="md" /> .md（Markdown）</label>
+          <label class="radio-label"><input type="radio" name="new-note-fmt" value="txt" checked /> <span data-i18n="modal_note.fmt_txt">.txt（プレーンテキスト）</span></label>
+          <label class="radio-label"><input type="radio" name="new-note-fmt" value="md" /> <span data-i18n="modal_note.fmt_md">.md（Markdown）</span></label>
         </div>
       </div>
       <div class="modal-actions">
-        <button id="new-note-cancel" class="btn-secondary">キャンセル</button>
-        <button id="new-note-confirm" class="btn-primary">作成</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- モーダル：新規フォルダ作成 -->
-  <div id="new-folder-modal" class="modal-overlay hidden">
-    <div class="modal">
-      <h2 class="modal-title" data-i18n="newFolderTitle">新建文件夹</h2>
-      <div class="modal-body">
-        <label class="modal-label" data-i18n="newFolderTitle">文件夹名称</label>
-        <input type="text" id="new-folder-name" class="modal-input" placeholder="文件夹名称" data-i18n-placeholder="folderNamePlaceholder" />
-      </div>
-      <div class="modal-actions">
-        <button id="new-folder-cancel" class="btn-secondary" data-i18n="cancel">取消</button>
-        <button id="new-folder-confirm" class="btn-primary" data-i18n="create">创建</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- モーダル：ファイル・フォルダ重命名 -->
-  <div id="file-rename-modal" class="modal-overlay hidden">
-    <div class="modal">
-      <h2 class="modal-title" data-i18n="renameTitle">重命名</h2>
-      <div class="modal-body">
-        <label class="modal-label" data-i18n="renamePlaceholder">请输入新名称</label>
-        <input type="text" id="file-rename-input" class="modal-input" placeholder="新名称" data-i18n-placeholder="renamePlaceholder" />
-      </div>
-      <div class="modal-actions">
-        <button id="file-rename-cancel" class="btn-secondary" data-i18n="cancel">取消</button>
-        <button id="file-rename-confirm" class="btn-primary" data-i18n="confirm">确认</button>
+        <button id="new-note-cancel" class="btn-secondary" data-i18n="modal.cancel">キャンセル</button>
+        <button id="new-note-confirm" class="btn-primary" data-i18n="modal_note.create">作成</button>
       </div>
     </div>
   </div>
@@ -334,14 +290,14 @@
   <!-- モーダル：メモ名変更 -->
   <div id="rename-modal" class="modal-overlay hidden">
     <div class="modal">
-      <h2 class="modal-title">メモ名を変更</h2>
+      <h2 class="modal-title" data-i18n="modal_rename.title">メモ名を変更</h2>
       <div class="modal-body">
-        <label class="modal-label">新しい名前</label>
-        <input type="text" id="rename-input" class="modal-input" placeholder="新しい名前" />
+        <label class="modal-label" data-i18n="modal_rename.label">新しい名前</label>
+        <input type="text" id="rename-input" class="modal-input" placeholder="新しい名前" data-i18n-placeholder="modal_rename.placeholder" />
       </div>
       <div class="modal-actions">
-        <button id="rename-cancel" class="btn-secondary">キャンセル</button>
-        <button id="rename-confirm" class="btn-primary">変更</button>
+        <button id="rename-cancel" class="btn-secondary" data-i18n="modal.cancel">キャンセル</button>
+        <button id="rename-confirm" class="btn-primary" data-i18n="modal_rename.confirm">変更</button>
       </div>
     </div>
   </div>
@@ -349,30 +305,33 @@
   <!-- モーダル：パスワード変更 -->
   <div id="change-pw-modal" class="modal-overlay hidden">
     <div class="modal">
-      <h2 class="modal-title">パスワード変更</h2>
-      <div class="modal-body">
-        <label class="modal-label">現在のパスワード</label>
-        <input type="password" id="current-pw" class="modal-input" placeholder="現在のパスワード" />
-        <label class="modal-label">新しいパスワード</label>
-        <input type="password" id="new-pw" class="modal-input" placeholder="新しいパスワード" />
-        <label class="modal-label">新しいパスワード（確認）</label>
-        <input type="password" id="confirm-pw" class="modal-input" placeholder="もう一度入力" />
-        <p id="pw-change-error" class="auth-error hidden"></p>
-      </div>
-      <div class="modal-actions">
-        <button id="change-pw-cancel" class="btn-secondary">キャンセル</button>
-        <button id="change-pw-confirm" class="btn-primary">変更する</button>
-      </div>
+      <h2 class="modal-title" data-i18n="modal_pw.title">パスワード変更</h2>
+      <form id="change-pw-form">
+        <input type="text" name="username" value="admin" autocomplete="username" hidden />
+        <div class="modal-body">
+          <label class="modal-label" data-i18n="modal_pw.current_label">現在のパスワード</label>
+          <input type="password" id="current-pw" class="modal-input" placeholder="現在のパスワード" data-i18n-placeholder="modal_pw.current_placeholder" autocomplete="current-password" />
+          <label class="modal-label" data-i18n="modal_pw.new_label">新しいパスワード</label>
+          <input type="password" id="new-pw" class="modal-input" placeholder="新しいパスワード" data-i18n-placeholder="modal_pw.new_placeholder" autocomplete="new-password" />
+          <label class="modal-label" data-i18n="modal_pw.confirm_label">新しいパスワード（確認）</label>
+          <input type="password" id="confirm-pw" class="modal-input" placeholder="もう一度入力" data-i18n-placeholder="modal_pw.confirm_placeholder" autocomplete="new-password" />
+          <p id="pw-change-error" class="auth-error hidden"></p>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="change-pw-cancel" class="btn-secondary" data-i18n="modal.cancel">キャンセル</button>
+          <button type="submit" id="change-pw-confirm" class="btn-primary" data-i18n="modal_pw.submit">変更する</button>
+        </div>
+      </form>
     </div>
   </div>
 
   <!-- 画像プレビュー Lightbox -->
   <div id="image-lightbox" class="lightbox hidden">
     <div class="lightbox-backdrop"></div>
-    <button class="lightbox-close" id="lightbox-close" title="閉じる">
+    <button class="lightbox-close" id="lightbox-close" title="閉じる" data-i18n-title="lightbox.close">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
-    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" title="前へ">
+    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" title="前へ" data-i18n-title="lightbox.prev">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div class="lightbox-content">
@@ -382,7 +341,7 @@
       <div id="lightbox-zip" class="lightbox-zip hidden"></div>
       <div class="lightbox-filename" id="lightbox-filename"></div>
     </div>
-    <button class="lightbox-nav lightbox-next" id="lightbox-next" title="次へ">
+    <button class="lightbox-nav lightbox-next" id="lightbox-next" title="次へ" data-i18n-title="lightbox.next">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
   </div>
@@ -396,8 +355,8 @@
       <div class="drag-overlay-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </div>
-      <h2>ドロップしてアップロード</h2>
-      <p>複数のファイルを一括でアップロードできます</p>
+      <h2 data-i18n="drag.title">ドロップしてアップロード</h2>
+      <p data-i18n="drag.subtitle">複数のファイルを一括でアップロードできます</p>
     </div>
   </div>
 

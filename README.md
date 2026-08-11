@@ -9,9 +9,16 @@ JAIST 共有 Web サーバー（Solaris 10 / Perl CGI）環境および Linux / 
 
 ## ✨ 主な機能
 
+- **多言語切り替え（Trilingual i18n Support）**
+  - 🇯🇵 **日本語 (Japanese, デフォルト)** | 🇨🇳 **中国語 (Simplified Chinese)** | 🇺🇸 **英語 (English)**
+  - 国旗アイコン付き Segmented Pill コントロール UI（`[ 🇯🇵 日本語 | 🇨🇳 中文 | 🇺🇸 EN ]`）
+  - リアルタイム言語切替（DOM `data-i18n` 属性連動）＆ `localStorage` による設定保持
+  - UI ツールバー、サイドバー、モーダル、ステータスバー、Toast 通知、サーバーダッシュボード、アーカイブ解凍テキストの完全多言語化
+
 - **メモ機能（Notepad）**
   - `.txt`（プレーンテキスト）および `.md`（Markdown）対応
   - リアルタイム Markdown プレビュー、ツールバーショートカット、エディタショートカット（`Ctrl+B`, `Ctrl+I`, `Ctrl+K`, `Ctrl+Shift+P`）
+  - メモ一覧項目の右クリックコンテキストメニュー（**名前変更** / **削除**）
   - 目次アウトライン（TOC）自動生成＆スムーズスクロール
   - オフライン下書き自動保存（`localStorage`）＆一鍵復元プロンプト
   - ノートの自動読み込み・保存・名前変更・削除
@@ -44,16 +51,18 @@ JAIST 共有 Web サーバー（Solaris 10 / Perl CGI）環境および Linux / 
 
 ## 🕒 最近の更新・修正履歴 (Change Log)
 
+- **三言語切替（日本語・中国語・英語）および i18n モジュールの導入**
+  - `js/modules/i18n.js` を新設。国旗アイコン付き分段コントロール（`[ 🇯🇵 日本語 | 🇨🇳 中文 | 🇺🇸 EN ]`）による即時言語切替と設定保存をサポート。
+- **メモ右クリックコンテキストメニュー（名前変更・削除）の追加**
+  - メモ一覧項目の右クリック操作に対応。純テキストのシンプルで上品なポップアップメニューから直感的にメモの名前変更と削除が可能に。
+- **タブ切替時のメモタイトル上書きバグの修正**
+  - サーバーダッシュボード表示後にメモタブへ戻った際、アクティブメモのタイトルがサーバー名で上書きされる不具合を修正。
 - **前端 ES Modules 構造への全面リファクタリング**
-  - 従来の単一 `app.js` (1500+行) を `js/main.js` および `js/modules/` (API, Theme, Notepad, FileManager, TreeExplorer, Lightbox) に分割モジュール化。
+  - 従来の単一 `app.js` (1500+行) を `js/main.js` および `js/modules/` (i18n, API, Theme, Notepad, FileManager, TreeExplorer, Lightbox) に分割モジュール化。
 - **WebAssembly オンデマンド遅延読み込み (Lazy Loading)**
   - `libarchive.wasm` モジュールを初回 `.7z` プレビュー時のみ動的 `import()` するよう改善。首屏ロード時間を大幅短縮。
 - **Windows エクスプローラー風ツリー表示 & 文字化け自動修復 (`fixEncoding`)**
   - アーカイブプレビューを多層折りたたみツリー構造に刷新。Windows 環境で圧縮された GBK / CP1252 エンコードの日本語・中国語文字化けを自動判定して正常復元。
-- **UI/UX 強化**
-  - 全画面ドラッグ＆ドロップ、リアルタイム検索＆カテゴリフィルター、Markdown 目次 (TOC) を追加。UI テキストを完全標準日本語化。
-- **Perl CGI Linux / Unix 互換性修正**
-  - 脚本の改行コードを CRLF から Unix LF に固定。Shebang を `#!/usr/bin/env perl` に統一。
 
 ---
 
@@ -66,9 +75,10 @@ Online_Notepad/
 ├── js/                 ← フロントエンド ES Modules ディレクトリ
 │   ├── main.js         ← メインエントリーポイント
 │   └── modules/
+│       ├── i18n.js         ← 国際化 (i18n) モジュール (ja / zh / en 辞書管理 & リアルタイム DOM 更新)
 │       ├── api.js          ← API 通信 & ユーティリティ (AbortController 超時制御)
 │       ├── theme.js        ← テーマ切り替え制御 (Light / Dark / Sumeru)
-│       ├── notepad.js      ← メモ CRUD & Markdown エディタ & 下書き自動保存 & TOC 目次
+│       ├── notepad.js      ← メモ CRUD & 右クリックメニュー & Markdown エディタ & TOC 目次
 │       ├── fileManager.js  ← ファイル管理 & リアルタイム検索/タグフィルター & ドラッグオーバーレイ
 │       ├── treeExplorer.js ← Windows 風アーカイブツリー構造 & WebAssembly 遅延読み込み
 │       └── lightbox.js     ← 全画面プレビュー Modal

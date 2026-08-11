@@ -9,9 +9,16 @@
 
 ## ✨ 主要功能
 
+- **多语言即时切换 (Trilingual i18n Support)**
+  - 🇯🇵 **日语 (Japanese, 默认)** | 🇨🇳 **中文 (Simplified Chinese)** | 🇺🇸 **英语 (English)**
+  - 国旗图标分段控制条 UI（`[ 🇯🇵 日本語 | 🇨🇳 中文 | 🇺🇸 EN ]`）
+  - 实时语言无缝切换（基于 DOM `data-i18n` 属性绑定）与 `localStorage` 语言偏好自动持久化
+  - 涵盖侧边栏、工具栏、弹窗 Modal、底部状态栏、Toast 通知、服务器仪表盘及压缩包解压提示的全量多语言国际化
+
 - **记事本功能 (Notepad)**
   - 支持 `.txt`（纯文本）与 `.md`（Markdown）格式
   - 实时 Markdown 渲染预览、快捷工具栏、编辑器快捷键（`Ctrl+B`, `Ctrl+I`, `Ctrl+K`, `Ctrl+Shift+P`）
+  - 笔记列表右键上下文菜单（**重命名** / **删除**）
   - Markdown 目录大纲 (TOC) 自动生成与平滑滚动跳转
   - 离线草稿自动暂存（`localStorage`）与一键恢复提示
   - 笔记的自动加载、保存、重命名与删除
@@ -44,16 +51,18 @@
 
 ## 🕒 最近修复与更新日志 (Change Log)
 
+- **三语言无缝切换（日语·中文·英语）及 i18n 模块架构**
+  - 新增 `js/modules/i18n.js` 国际化模块。支持基于国旗图标分段组件（`[ 🇯🇵 日本語 | 🇨🇳 中文 | 🇺🇸 EN ]`）的即时语言切换与偏好持久化。
+- **笔记右键上下文菜单（重命名·删除）功能**
+  - 支持侧边栏笔记列表项右键操作。通过纯文本优雅排版的上下文菜单，提供快速重命名与二次确认删除功能。
+- **Tab 标签切换时笔记标题误覆盖 BUG 修复**
+  - 彻底修复从文件 / 服务器 Dashboard 仪表盘切回笔记视图时，当前激活笔记标题被临时服务器名称覆盖的 BUG。
 - **前端架构 ES Modules 模块化重构**
-  - 将原单文件 `app.js`（1500+行）重构解耦为 `js/main.js` 及 `js/modules/`（包含 API、Theme、Notepad、FileManager、TreeExplorer、Lightbox 等六大模块）。
+  - 将原单文件 `app.js`（1500+行）重构解耦为 `js/main.js` 及 `js/modules/`（包含 i18n、API、Theme、Notepad、FileManager、TreeExplorer、Lightbox 等七大模块）。
 - **WebAssembly 动态按需延迟加载 (Lazy Loading)**
   - 将 `libarchive.wasm` 模块改为仅在用户首次点击 `.7z` 预览时动态 `import()` 加载，大幅提升首屏加载速度。
 - **Windows 资源管理器风格树状预览 & 乱码自动修复 (`fixEncoding`)**
   - 压缩包预览全面升级为多层级可折叠树状结构。针对 Windows 打包的 GBK / CP1252 编码文件，增加智能 `TextDecoder` 中日文乱码自动修复。
-- **UI/UX 交互增强**
-  - 新增全屏拖拽上传 overlay、文件实时搜索与分类 Tab 筛选、Markdown 目录大纲 (TOC)。界面文本全面完成标准日本语化。
-- **Perl CGI 跨平台兼容性修复**
-  - 脚本换行符由 CRLF 统一修正为 Unix LF，Shebang 统一为 `#!/usr/bin/env perl`，并通过 `.gitattributes` 锁定。
 
 ---
 
@@ -66,9 +75,10 @@ Online_Notepad/
 ├── js/                 ← 前端 ES Modules 目录
 │   ├── main.js         ← 主入口文件
 │   └── modules/
+│       ├── i18n.js         ← 国际化 (i18n) 模块 (ja / zh / en 字典管理与 DOM 动态更新)
 │       ├── api.js          ← API 通信与工具函数 (AbortController 超时控制)
 │       ├── theme.js        ← 主题切换管理 (Light / Dark / Sumeru)
-│       ├── notepad.js      ← 记事本 CRUD、Markdown 编辑器、离线草稿暂存与 TOC 目录
+│       ├── notepad.js      ← 记事本 CRUD、右键菜单、Markdown 编辑器与 TOC 目录
 │       ├── fileManager.js  ← 文件管理、搜索/分类筛选器与拖拽上传覆盖层
 │       ├── treeExplorer.js ← Windows 风格压缩包树状视图与 WASM 按需懒加载
 │       └── lightbox.js     ← 全屏预览 Modal
